@@ -25,6 +25,7 @@ from typing import Callable, Mapping, Sequence
 
 import numpy as np
 
+from ..criteria import Criterion, RelativeError
 from ..formats import DEFAULT_LADDER, FP64, Format, round_to
 from ..types import Caps, Config, ConfigSpace, Goal, Result
 
@@ -51,7 +52,11 @@ class Precision:
 
 
 class NumpyEvaluator:
-    """Score a configuration by relative error against an all-fp64 reference."""
+    """Score a configuration against an all-fp64 reference run.
+
+    What "score" means is the `criterion`'s business: relative error by default,
+    an iteration budget for iterative methods (see `parsimony.criteria`).
+    """
 
     def __init__(
         self,
@@ -59,6 +64,7 @@ class NumpyEvaluator:
         goal: Goal | None = None,
         ladder: tuple[Format, ...] = DEFAULT_LADDER,
         cases: Sequence[object] | None = None,
+        criterion: Criterion | None = None,
     ):
         """`cases`, when given, are passed to the kernel one at a time as a second
         argument, and the tolerance must hold for *every* case.
@@ -75,6 +81,7 @@ class NumpyEvaluator:
         self.goal = goal or Goal()
         self.ladder = ladder
         self.cases = None if cases is None else list(cases)
+        self.criterion: Criterion = criterion or RelativeError(self.goal.rel_tol)
         self.caps = Caps(formats=ladder, needs_rebuild=False, sees_gpu=False,
                          measures_time=False, slowdown=1.0)
         self.probes = 0
@@ -97,6 +104,7 @@ class NumpyEvaluator:
             outputs = self._run(rec)
             self._reference = {k: np.asarray(v, dtype=np.float64)
                                for k, v in outputs.items()}
+            self.criterion.calibrate(outputs)
             self._space = ConfigSpace(variables=list(rec.seen), ladder=self.ladder)
         return self._space
 
@@ -118,27 +126,5 @@ class NumpyEvaluator:
                           meta={"exception": type(exc).__name__})
         seconds = time.perf_counter() - start
 
-        error = _max_relative_error(self._reference, outputs)
-        passed = bool(np.isfinite(error)) and error <= self.goal.rel_tol
-        return Result(dict(config), float(error), passed, seconds=seconds)
-
-
-def _max_relative_error(reference: Mapping[str, np.ndarray],
-                        candidate: Mapping[str, object]) -> float:
-    """Largest relative error over all named outputs.
-
-    Falls back to absolute error where the reference is zero, so an output that
-    should be exactly zero cannot mask a wrong answer behind a division.
-    """
-    worst = 0.0
-    for name, ref in reference.items():
-        if name not in candidate:
-            return float("inf")
-        got = np.asarray(candidate[name], dtype=np.float64)
-        if got.shape != ref.shape:
-            return float("inf")
-        if not np.all(np.isfinite(got)):
-            return float("inf")
-        denom = np.where(ref == 0.0, 1.0, np.abs(ref))
-        worst = max(worst, float(np.max(np.abs(got - ref) / denom)))
-    return worst
+        passed, score, meta = self.criterion.accept(outputs)
+        return Result(dict(config), float(score), bool(passed), seconds=seconds, meta=meta)

@@ -15,6 +15,7 @@ from .formats import (
     BF16, DEFAULT_LADDER, FP8_E4M3, FP8_E5M2, FP16, FP32, FP64, TF32,
     Format, round_to, virtual,
 )
+from .criteria import Criterion, IterationBudget, RelativeError
 from .evaluators.numpy_eval import NumpyEvaluator, Precision
 from .searches.ddmin import PrecisionDDMin, ddmin
 from .searches.prefilter import SoloSensitivity
@@ -28,6 +29,7 @@ __all__ = [
     "DEFAULT_LADDER", "virtual", "round_to",
     "Caps", "Goal", "Result", "ConfigSpace", "Config",
     "NumpyEvaluator", "Precision",
+    "Criterion", "RelativeError", "IterationBudget",
     "PrecisionDDMin", "ddmin", "UniformBisect", "SoloSensitivity",
     "tune", "TuneReport",
 ]
@@ -75,6 +77,7 @@ def tune(
     ladder: tuple[Format, ...] = DEFAULT_LADDER,
     prefilter: bool = True,
     cases: object | None = None,
+    criterion: Criterion | None = None,
 ) -> TuneReport:
     """Tune `kernel` to the lowest precision meeting a relative-error tolerance.
 
@@ -84,7 +87,8 @@ def tune(
     whether the expensive search bought anything, and `prefilter=False` says what
     the prefilter saved.
     """
-    ev = NumpyEvaluator(kernel, Goal(rel_tol=tol), ladder, cases=cases)
+    ev = NumpyEvaluator(kernel, Goal(rel_tol=tol), ladder, cases=cases,
+                        criterion=criterion)
     space = ev.discover()
     space_before = space.size()
 

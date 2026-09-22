@@ -66,9 +66,16 @@ contribute a prefilter establishing per-variable floors in $O(n \log L)$
 evaluations, which cuts the search by $6$--$15\times$ for at most $8\%$ more
 storage, and we report three experimental-design failures encountered in
 producing these numbers, each of which yields a plausible but meaningless result.
-\pending{The PETSc case study (\S\ref{sec:petsc}), and with it any \emph{measured}
-performance claim. This paper's thesis is about payoff, and payoff is presently
-argued from hardware trends rather than measured.}
+For Newton's method we argue that the right observable is iteration count at
+fixed residual tolerance, since a stored Jacobian cannot change the fixed point,
+and measure that \texttt{fp32} Jacobian storage costs no iterations, \texttt{fp16}
+costs a third more, and below about 10 bits Newton degrades to Picard iteration
+rather than diverging. The same residual may be stored in 16 bits but not
+evaluated in fewer than 33 --- storage precision and arithmetic precision are
+different questions, and a solver that evaluates its residual in low precision
+reports false convergence as fast convergence.
+\pending{Any \emph{measured} performance claim. This paper's thesis is about
+payoff; iteration counts are measured, cost per iteration is not yet.}
 \end{abstract}
 
 \section{Introduction}
@@ -173,6 +180,17 @@ which was drawn from GSL routines and small NAS kernels.
   \item Three experimental-design failures, each producing a plausible but
     meaningless result, and the conditions that provoke them
     (\S\ref{sec:threats}).
+  \item An answer to how many bits a Newton Jacobian needs: for iterative
+    methods the observable is iteration count at fixed residual tolerance, not
+    error; under it, \texttt{fp32} Jacobian storage is free, \texttt{fp16} costs
+    a third more iterations, and below about 10 bits Newton degrades to Picard
+    iteration rather than failing (\S\ref{sec:petsc}).
+  \item A demonstration that storage precision and arithmetic precision are
+    different questions --- the same residual may be stored in 16 bits and may
+    not be evaluated in fewer than 33 --- and a design rule that follows from
+    it: convergence must be judged by an independent high-precision residual, or
+    a low-precision solver reports false convergence as fast convergence
+    (\S\ref{sec:petsc}).
 \end{itemize}
 
 \section{Background}
@@ -477,27 +495,170 @@ the exact solution where it is known, is better posed. This is a change to the
 acceptance criterion rather than to the search, and it applies to this whole
 family of tools, Precimonious and PROMISE included.
 
-\section{Case Study: Sparse Iterative Solvers}
+\section{Newton's Method: How Many Bits Does a Jacobian Need?}
 \label{sec:petsc}
 
-\pending{The result that would make this a paper rather than an architecture
-note. Two questions in PETSc~\cite{petsc}, chosen because they are common targets
-rather than exotic ones, and because both have a real payoff on current hardware:
+\subsection{The observable}
+\label{sec:observable}
 
-\emph{How many bits does a Jacobian need?} Inexact Newton methods tolerate
-inaccurate Jacobians by construction --- the outer iteration corrects them --- and
-practitioners know this qualitatively. Nobody has published a number. This is a
-direct application of virtual-width search to a quantity whose precision
-requirement is genuinely unknown.
+Practitioners know that inexact Newton methods tolerate inaccurate Jacobians;
+nobody has published a number, and the reason is that the question is not well
+posed until one decides what to measure. Write the step with a stored, rounded
+Jacobian as $s = -(J+E)^{-1}F$. Then
+\[
+  F + Js = E\,(J+E)^{-1}F, \qquad
+  \eta := \frac{\lVert F + Js\rVert}{\lVert F\rVert} \lesssim \lVert E\rVert\,\lVert J^{-1}\rVert \le u_p\,\kappa(J),
+\]
+which is the forcing term of Dembo--Eisenstat--Steihaug inexact Newton with
+$u_p = 2^{-p}$. Standard theory then says two things. The converged solution does
+not depend on $J$'s precision at all, provided $F$ is evaluated accurately and the
+iteration converges: $J$ chooses the direction, $F$ is what is driven to zero.
+What changes is the \emph{rate}, from quadratic to q-linear with contraction
+$\approx \eta$. An error-based criterion would therefore report that the Jacobian
+needs zero bits --- true, and useless.
 
-\emph{Mixed-precision preconditioning and matrix storage.} Sparse matrix-vector
-products are bandwidth-bound, so storing the operator in \texttt{fp32} or
-\texttt{bfloat16} while accumulating in \texttt{fp64} is close to a factor of two.
-This is precisely the regime in which the original evaluation's $0.0\%$ becomes a
-real number, which makes it the sharpest available test of this paper's thesis.
+The observable is cost at fixed accuracy: hold the residual tolerance fixed, as a
+solver does anyway, and count iterations. This inverts the Precimonious framing.
+It also generalizes: every quantity in an iterative method that is not the
+residual or the solution --- a preconditioner, a search direction, a step --- is a
+fixed operator that changes the iteration count and cannot change the fixed
+point. Quantities divide into \emph{rate-limiting} and \emph{accuracy-limiting},
+and one criterion catches both: converged to tolerance within an iteration
+budget. Rate-limiting cost appears as extra iterations; accuracy-limiting failure
+appears as non-convergence.
 
-Both require an evaluator that can run compiled MPI code, which does not yet
-exist (\S\ref{sec:limitations}).}
+\subsection{Setup and predictions}
+
+We solve the Bratu problem $-\Delta u - \lambda e^u = 0$ on the unit square with
+a five-point stencil and Newton with a direct linear solve --- PETSc's SNES
+\texttt{ex5}~\cite{petsc} in its simplest form --- over three cases spanning a
+decade in conditioning: $(k,\lambda) = (16,1)$, $(16,6)$, $(24,6)$ with
+$\kappa(J) = 123, 265, 575$ at the solution. Variables are the stored Jacobian
+$J$, step $\delta$, residual $F$ and iterate $u$; a second configuration rounds
+the two terms of $F$ separately \emph{before} they are subtracted, so the
+cancellation in $-\Delta u - \lambda e^u$ is modeled. Convergence is judged by an
+independent \texttt{fp64} residual of the returned iterate, for a reason given
+below.
+
+The predictions were written down before running anything. $J$ and $\delta$ are
+rate-limiting with knee near $\log_2 \kappa + 3 \approx 10$--$12$ bits. The
+stored $F$ perturbs the right-hand side relatively, giving $\eta \approx u_p$
+with \emph{no} $\kappa$: nearly free. The stored $u$ caps attainable accuracy at
+$u_p\kappa$, so it needs $\log_2\kappa + \log_2(1/\mathrm{rtol}) \approx 40$--$42$
+bits and the threshold should \emph{move with $\kappa$}. The residual terms
+before cancellation have a floor $\approx u_p$ relative to the terms' magnitude,
+so they need $\log_2(1/\mathrm{rtol}) + 3 \approx 36$ bits and the threshold
+should \emph{not} move with $\kappa$. The cases were chosen to make that last
+distinction observable.
+
+\subsection{Results}
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+variable & predicted & observed & mechanism\\
+\midrule
+$J$ stored & knee $\approx 10$--$12$; fails when $u_p\kappa \gtrsim 1$ & knee $10\pm1$; \textbf{never fails} & degrades to Picard\\
+$\delta$ stored & $\le u_p\kappa$, typically less & $+1$ iter at 12 bits, $+4$ at 4; never fails & perturbed step\\
+$F$ stored & $\kappa$-free, few bits & 4 bits: $+2$--$3$ iters, same for all $\kappa$ & relative RHS perturbation\\
+$u$ stored & $40$--$42$, shifts with $\kappa$ & $37$--$39$, \textbf{shifts with $\kappa$} & accuracy floor $u_p\kappa$\\
+$F$ terms & $\approx 36$, $\kappa$-independent & $33$ for \textbf{all three cases} & cancellation floor\\
+\bottomrule
+\end{tabular}
+\caption{Per-variable thresholds on Bratu Newton, one variable at a time down a
+virtual-width ladder, everything else \texttt{fp64}. Predictions were made
+before the runs.}
+\label{tab:bratu-thresholds}
+\end{table}
+
+Table~\ref{tab:bratu-thresholds} summarizes the single-variable sweep. Four of
+five predictions held as mechanisms, not merely as numbers: the $u$ threshold
+moves with $\kappa$ and the cancellation threshold does not, which is the
+difference between an accuracy floor proportional to $u_p\kappa$ and one
+proportional to $u_p$, and a single case could not have shown it. The fifth
+prediction was wrong in the most useful way.
+
+\paragraph{The Jacobian degrades to Picard iteration.} The bound
+$u_p\kappa \gtrsim 1$ predicts divergence below about 7 bits. It never happens.
+At low precision the diagonal entry $4/h^2 - \lambda e^{u}$ rounds to $4/h^2$
+--- the nonlinear term falls below the ulp of the Laplacian's diagonal --- so the
+stored Jacobian degenerates to the discrete Laplacian $L$, and Newton's update
+$u \leftarrow u - L^{-1}(Lu - \lambda e^u) = L^{-1}\lambda e^u$ \emph{is} Picard
+iteration. Picard converges for $\lambda$ below the turning point
+$\lambda^* \approx 6.81$ at a rate set by $\lambda/\lambda^*$, which is why the
+low-precision floor is 8 iterations at $\lambda=1$ and 39 at $\lambda=6$
+regardless of grid; pure Picard reproduces the floors exactly (8, 39, 39 against
+8, 39, 40). So the answer to the section's question is: about 10 bits for this
+problem, and below that one pays Picard's rate rather than failing. The knee is
+where the smallest physically significant term in a row is resolved against the
+largest --- $\log_2$ of the row's dynamic range --- which is the diagnostic to
+carry to a stiff or multiphysics Jacobian.
+
+\paragraph{False convergence.} With the residual's terms rounded before
+cancellation, the solver's own stopping test fires spuriously: near the solution
+$\Delta_h u \approx \lambda e^u$, both terms round to the same representable
+value, the computed residual is exactly zero, and the solver declares victory.
+In the raw sweep this appeared as ``converged in one or two iterations'' at 4--8
+bits. A real solver has only its own residual to consult. This is why
+mixed-precision iterative refinement evaluates the residual in high
+precision~\cite{carsonhigham}, rediscovered here from the failure side, and it
+is now a rule the tool enforces: a kernel's convergence flag must come from an
+independent high-precision residual.
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{@{}rrrcccc@{}}
+\toprule
+slack & iters/ref & bits & $F$ & $J$ & $\delta$ & $u$\\
+\midrule
+0    & 1.00 & 147 & tf32 & fp32 & fp32 & fp64\\
+0.25 & 1.33 & 128 & bf16 & fp16 & fp32 & fp64\\
+1.0  & 1.67 & 112 & bf16 & fp16 & bf16 & fp64\\
+\bottomrule
+\end{tabular}
+\qquad
+\begin{tabular}{@{}rccc@{}}
+\toprule
+slack & $F$ & $F_{\exp}$ & $F_{\Delta}$\\
+\midrule
+0    & tf32 & fp64 & fp64\\
+0.25 & bf16 & fp64 & fp64\\
+1.0  & bf16 & fp64 & fp64\\
+\bottomrule
+\end{tabular}
+\caption{Pareto search over real storage formats under an iteration budget.
+Left: stored quantities, $F$ evaluated in \texttt{fp64} (256 bits at full
+precision). Right: the same search with the residual's terms rounded before
+cancellation; $J$, $\delta$, $u$ as at left.}
+\label{tab:bratu-pareto}
+\end{table}
+
+Table~\ref{tab:bratu-pareto} gives the mixed-precision search under an
+iteration budget. \textbf{Storing the Jacobian in \texttt{fp32} is free}: zero
+iteration cost. \texttt{fp16} storage costs a third more iterations. Nothing
+below \texttt{fp16} is reachable at any budget, for two different reasons worth
+separating: \texttt{fp8e4m3} overflows the stencil entries
+($4/h^2 \approx 1156 > 448$), while \texttt{fp8e5m2}'s two significand bits put
+the solver on Picard's rate, eight times the iterations. The iterate $u$ is
+\texttt{fp64} at every budget, as an accuracy-limiting quantity must be.
+
+The right-hand table is the storage-versus-arithmetic distinction as a single
+row: the residual may be \emph{stored} in 16 bits while its terms may not be
+\emph{evaluated} in fewer than 33, and the real-format ladder has nothing between
+\texttt{fp32}'s 24 and \texttt{fp64}'s 53. A tool that models storage precision
+must not be read as answering an arithmetic-precision question; this is the
+concrete demonstration of the scope statement in \S\ref{sec:limitations}.
+
+The prefilter reduces 72, 80 and 55 evaluations to 13, 18 and 14, for 0--5\%
+more storage.
+
+\pending{Tier 2: the cost-per-iteration measurement. Everything above is a count
+of iterations; the design factorizes time as iterations $\times$ cost per
+iteration and measures the second factor with a templated SpMV kernel on the
+target hardware, checked at the uniform-\texttt{fp32} point where PETSc can be
+built and timed end to end. Until that exists, ``\texttt{fp32} Jacobian storage
+is free'' is a statement about iterations.}
 
 \section{Limitations and Future Work}
 \label{sec:limitations}
@@ -531,10 +692,25 @@ trades resolution for feasibility, and it shifts the hard step to deciding which
 operations to attribute, which is a modeling judgment informed by reading the
 source.
 
-\paragraph{The optimization gap.} Like its predecessors, any source- or
-bitcode-level variable search tunes a program that the optimizer will
-subsequently transform. This remains unsolved and is a threat to the validity of
-any configuration reported by tools in this family.
+\paragraph{Storage, not arithmetic.} The numpy evaluator rounds \emph{stored}
+quantities: the result of each named computation at the point it is named. It
+does not model arithmetic performed in reduced precision --- a dot product
+accumulated in \texttt{bfloat16}, or a residual's terms evaluated in
+\texttt{fp16} before they cancel. For storage formats, which is where the
+bandwidth is, the model is exact. For the scalars the CG study found tolerant to
+8 bits, the honest statement is ``these need not be \emph{accurate}'', not
+``these may be \emph{computed} in 8-bit arithmetic''; they will be computed in
+registers regardless, at no cost, and the finding has no performance content of
+its own. \S\ref{sec:petsc} makes the gap concrete: the same residual may be
+stored in 16 bits and may not be evaluated in fewer than 33.
+
+\paragraph{The optimization gap, mostly sidestepped.} Tuning at \texttt{-O0} and
+shipping at \texttt{-O3} bites tools whose variables are compiler temporaries
+that optimization deletes or keeps in registers. Our variables are algorithmic
+quantities --- a stored matrix, a residual vector --- that survive optimization
+by construction because they live in memory. What remains is the previous
+paragraph: fused or extended-precision arithmetic on scalars differs from
+per-operation rounding, which matters for reductions and for nothing else here.
 
 \paragraph{Accelerator code.} LLVM-instrumentation evaluators do not observe GPU
 kernels, which is where the reduced-precision payoff is largest. Conclusions must
@@ -596,12 +772,25 @@ quantizing the output onto a lucky lattice point. Any tool in this family can
 produce these, and the third also refutes the natural soundness argument for
 prefiltering.
 
-\pending{The claim this paper cannot yet make. Every performance statement here
-is an argument from hardware trends, not a measurement, because no evaluator
-compiles and times code (\S\ref{sec:limitations}). The thesis is about payoff;
-until \S\ref{sec:petsc} carries a measured number, the paper establishes that the
-\emph{accuracy} headroom exists and argues that the payoff now follows. If it
-turns out not to, that is equally publishable and should be stated as such.}
+For Newton's method the question ``how many bits does the Jacobian need'' has an
+answer once the observable is chosen correctly: iteration count at fixed
+residual tolerance. Under it, \texttt{fp32} storage of the Jacobian is free,
+\texttt{fp16} costs a third more iterations, and below about ten bits the
+iteration does not diverge but degrades to Picard's rate, because the nonlinear
+term falls below the ulp of the stencil's diagonal. The same experiment shows
+that storage precision and arithmetic precision are different questions --- the
+residual stores in 16 bits and evaluates in no fewer than 33 --- and that a
+solver evaluating its residual in low precision will report false convergence
+unless convergence is judged by an independent high-precision residual.
+
+\pending{The claim this paper cannot yet make. Iteration counts are measured;
+cost per iteration is not, because no evaluator compiles and times code
+(\S\ref{sec:limitations}). The design factorizes time as the product of the two
+and specifies the measurement (a templated SpMV kernel, checked against an
+end-to-end uniform-\texttt{fp32} PETSc build). Until it exists, the paper
+establishes that the accuracy headroom is real and structured, and argues that
+the payoff now follows. If it turns out not to, that is equally publishable and
+should be stated as such.}
 
 \section*{Availability}
 

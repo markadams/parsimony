@@ -77,21 +77,46 @@ def kernel(P):
 This is deliberately the same shape as verificarlo's `vfc_probe`, so a kernel
 prototyped here ports to an instrumented C build without rethinking the variables.
 
+## Acceptance criteria
+
+What "passes" means is pluggable (`parsimony.criteria`), and for iterative methods
+it is not a detail. Relative error against the fp64 run is right for a function
+that computes a value; for a solver it measures bit-reproduction of a rounding
+trajectory near convergence, and for a Jacobian or preconditioner — which cannot
+change the fixed point — it measures nothing. `IterationBudget` holds the
+solver's own residual tolerance fixed and counts iterations instead:
+
+```python
+tune(kernel, cases=CASES, criterion=IterationBudget(slack=0.25))
+```
+
+## Case studies
+
+- [`casestudies/nas_cg`](casestudies/nas_cg) — conjugate gradient. The scalars
+  that steer the iteration tolerate bf16 and below; the operator and state vectors
+  set accuracy, with fp32 operator storage sufficient to 1e-6. Three experimental
+  design errors caught and documented.
+- [`casestudies/newton`](casestudies/newton) — Bratu Newton. Design written first
+  (`DESIGN.md`), then checked. fp32 Jacobian storage is free, fp16 costs a third
+  more iterations, and below ~10 bits Newton degrades to Picard iteration rather
+  than diverging. The residual stores in 16 bits but cannot be *evaluated* in
+  fewer than 33 — storage and arithmetic precision are different questions.
+
 ## Status
 
-Early. The numpy evaluator and the ddmin search work and are tested; the CLI emits
-JSON. Not yet built:
+The numpy evaluator, prefilter, both searches and both criteria work and are
+tested (77 tests). What the numpy evaluator models is **storage** rounding — the
+value of each named quantity at the point it is named — not arithmetic performed
+in reduced precision; read every result with that in mind. Not yet built:
 
-- **Blame-style prefilter.** ddmin costs O(n²) evaluations *per ladder rung* — 350
-  probes for 11 variables above. Blame Analysis cut that 9× on average by running
-  once and pruning the space first. This is the next thing worth having.
-- **Evaluators that measure time.** The numpy evaluator answers "how many bits does
-  this arithmetic need?", never "will this be faster?". The dual objective needs a
-  backend that compiles and runs something.
+- **Evaluators that measure time.** Everything here counts iterations or bits. The
+  design (`casestudies/newton/DESIGN.md`) factorizes time as iterations × cost per
+  iteration and specifies the second factor as a templated SpMV kernel timed on
+  hardware, since PETSc's precision is a configure-time typedef and a
+  per-configuration rebuild is not an option.
 - **Coarse-grained blame.** Attribution at the level of library operations rather
   than LLVM instructions — the instruction-level version cost 50× runtime and
-  exhausted 256 GB on a NAS benchmark at class S. Operation-level attribution is
-  what could make this work on a real HPC library.
+  exhausted 256 GB on a NAS benchmark at class S.
 
 ## Prior and parallel work
 
