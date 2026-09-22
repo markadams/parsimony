@@ -29,9 +29,18 @@ thresholds, and for half of them the answer is **0.0% at every threshold** — o
 inserted casts. The tools frequently concluded the original program was fastest.
 
 The objective function has changed. Reduced precision now targets tensor cores,
-bf16/fp8 formats, and bandwidth-bound kernels where halving a matrix's storage is
-close to a 2× win. The search algorithms deserve another look precisely because what
-they were searching *for* is now worth finding.
+bf16/fp8 formats, and bandwidth-bound kernels where narrowing a matrix's storage
+cuts memory traffic. The search algorithms deserve another look precisely because
+what they were searching *for* is now worth finding.
+
+How much it cuts is worth stating carefully, because the format width overstates
+it. In CSR, one SpMV moves `r*(w+4) + 4 + v + 8` bytes per row — narrowing the
+value width `w` leaves the 4-byte column indices, the row pointer, and the vector
+read and write untouched. The saving is bounded by `12/(w+4)`: **1.5× for fp32 and
+2× for fp16, not 2× and 4×**, and reaches that bound only for fat rows. At a
+7-point stencil it is 1.36× and 1.67×. See
+[`casestudies/spmv`](casestudies/spmv), whose host-only test asserts the
+derivation.
 
 ## Two plugin axes
 

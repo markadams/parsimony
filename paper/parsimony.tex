@@ -49,7 +49,8 @@ fastest.
 
 The objective function has since changed. Reduced precision now addresses tensor
 cores, \texttt{bfloat16} and 8-bit formats, and bandwidth-bound kernels in which
-halving a matrix's storage approaches a factor of two in time. We present
+narrowing a matrix's storage cuts memory traffic --- though by less than the
+format width suggests, for reasons we quantify. We present
 \emph{parsimony}, a precision-tuning framework that separates the two concerns
 prior tools fused --- how a precision configuration is \emph{evaluated}, and how
 the configuration space is \emph{searched} --- and reimplements the delta-debugging
@@ -145,10 +146,27 @@ programs in the original evaluation, is no longer near zero.
 
 \paragraph{Bandwidth-bound kernels.} Much of scientific computing --- sparse
 matrix-vector products above all --- is limited by memory traffic rather than by
-arithmetic. For these, precision is a \emph{storage} decision, and halving the
-width of the dominant array approaches a factor of two in time regardless of what
-the arithmetic units do. This case barely existed in the original benchmark set,
-which was drawn from GSL routines and small NAS kernels.
+arithmetic. For these, precision is a \emph{storage} decision whose payoff does
+not depend on what the arithmetic units do. This case barely existed in the
+original benchmark set, drawn from GSL routines and small NAS kernels.
+
+The saving is real but smaller than the format width suggests, and the arithmetic
+is worth doing once. In CSR, one sparse matrix-vector product moves
+$r(w + 4) + 4 + v + 8$ bytes per row, for $r$ nonzeros per row, value width $w$
+and vector width $v$. Narrowing $w$ leaves three terms untouched: the 4-byte
+column indices, the row pointer, and the vector read and write. The saving is
+therefore bounded by $12/(w+4)$ --- $1.5\times$ for \texttt{fp32} and $2\times$
+for \texttt{fp16}, not $2\times$ and $4\times$ --- and approaches that bound only
+as rows grow fat. At a seven-point stencil ($r \approx 6.5$) it is $1.36\times$
+and $1.67\times$; at twenty-seven points, $1.45\times$ and $1.88\times$.
+Narrowing the \emph{vector} alone buys under $7\%$, since its traffic is $O(n)$
+against the matrix's $O(\mathrm{nnz})$.
+
+So a mixed-precision SpMV is worth roughly a third, not a half, on a thin stencil
+--- a real gain on a kernel that dominates a solver's time, and an order of
+magnitude more than the $0.0\%$ the 2013 evaluation found, but not the factor of
+two the format width invites one to assume. We state it here because it bounds
+every performance claim in this paper.
 
 \subsection{Contributions}
 
