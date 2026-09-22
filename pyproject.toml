@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# The PyPI name "parsimony" is currently held by an unrelated, inactive v0.0.1
+# package.  Nothing is blocked until first publish; resolve it then, either via a
+# PEP 541 name-transfer request or by publishing under a fallback distribution
+# name while keeping `import parsimony`.
+name = "parsimony"
+version = "0.1.0"
+description = "Find the fewest bits a computation actually needs."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "BSD-3-Clause" }
+authors = [{ name = "Mark Adams", email = "mfadams@lbl.gov" }]
+keywords = ["floating-point", "mixed-precision", "precision-tuning", "hpc"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = ["numpy>=1.24"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+parsimony = "parsimony.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
