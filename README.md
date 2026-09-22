@@ -33,12 +33,22 @@ bf16/fp8 formats, and bandwidth-bound kernels where narrowing a matrix's storage
 cuts memory traffic. The search algorithms deserve another look precisely because
 what they were searching *for* is now worth finding.
 
-How much it cuts is worth stating carefully, because the format width overstates
-it. In CSR, one SpMV moves `r*(w+4) + 4 + v + 8` bytes per row — narrowing the
-value width `w` leaves the 4-byte column indices, the row pointer, and the vector
-read and write untouched. The saving is bounded by `12/(w+4)`: **1.5× for fp32 and
-2× for fp16, not 2× and 4×**, and reaches that bound only for fat rows. At a
-7-point stencil it is 1.36× and 1.67×. See
+How much it cuts depends on the sparse data structure, not just the format. In
+block CSR with block size `b`, one SpMV moves `r_b*(b^2*w + 4) + 4 + b*(v + 8)`
+bytes per block row — narrowing the value width `w` leaves the column indices,
+the row pointer, and the vector traffic alone. A block carries one index for
+`b^2` values, so the saving is bounded by `(8 + 4/b^2)/(w + 4/b^2)`:
+
+| block size | fp32 | fp16 |
+|---|---|---|
+| 1 (AIJ) | 1.50× | 2.00× |
+| 3 (elasticity, BAIJ) | 1.90× | 3.45× |
+
+So scalar CSR **cannot** halve the time — the 4-byte index per nonzero caps it,
+and a 7-point stencil realizes only 1.36×. Blocking lifts the cap: for an
+`ex56`-shaped elasticity matrix (`bs=3`, 27 blocks/row), BAIJ gives 1.85× and
+3.24× where AIJ gives 1.48× and 1.96×, and BAIJ at fp32 moves **2.62× less than
+AIJ at fp64**. Reduced precision and blocking are complementary. See
 [`casestudies/spmv`](casestudies/spmv), whose host-only test asserts the
 derivation.
 
