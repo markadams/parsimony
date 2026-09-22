@@ -1,0 +1,451 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage[numbers,sort&compress]{natbib}
+
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,
+            urlcolor=blue!50!black}
+
+% Draft scaffolding.  Everything wrapped in \pending is an argument the paper
+% intends to make and has not yet earned; \todo marks a smaller loose end.
+% Both render loudly on purpose.  Remove this block before submission and the
+% document should still compile.
+\newcommand{\pending}[1]{%
+  \par\medskip\noindent\fcolorbox{red!60!black}{red!4}{%
+    \parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{\small\textbf{[PENDING]}\ #1}}%
+  \par\medskip}
+\newcommand{\todo}[1]{\textcolor{red!70!black}{\small[\textbf{TODO:} #1]}}
+
+\lstset{basicstyle=\ttfamily\small,columns=fullflexible,keepspaces=true,
+        showstringspaces=false,frame=single,framesep=4pt,rulecolor=\color{black!25}}
+
+\title{Parsimony: Revisiting Search-Based Floating-Point\\
+       Precision Tuning for Reduced-Precision Hardware}
+\author{Mark Adams\\
+        \small Lawrence Berkeley National Laboratory\\
+        \small \texttt{mfadams@lbl.gov}}
+\date{Draft --- \today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Automated floating-point precision tuning was solved, in method, over a decade
+ago. Precimonious~\cite{precimonious} searched type configurations with delta
+debugging; Blame Analysis~\cite{blame} made the search tractable by pruning it
+with a single shadow execution. Both are unmaintained. We argue this is not
+because the methods failed but because the hardware of the time did not reward
+them: in the Blame Analysis evaluation, four of ten benchmark programs show
+exactly $0.0\%$ speedup at every error threshold tested, and a fifth never
+exceeds $0.4\%$. Converting \texttt{double} to \texttt{float} on a 2013 CPU
+bought a little vectorization and cache residency, net of the casts it
+introduced, and the tools frequently reported that the original program was
+fastest.
+
+The objective function has since changed. Reduced precision now addresses tensor
+cores, \texttt{bfloat16} and 8-bit formats, and bandwidth-bound kernels in which
+halving a matrix's storage approaches a factor of two in time. We present
+\emph{parsimony}, a precision-tuning framework that separates the two concerns
+prior tools fused --- how a precision configuration is \emph{evaluated}, and how
+the configuration space is \emph{searched} --- and reimplements the delta-debugging
+search against modern formats. We validate the emulation against hardware and the
+search against a synthetic oracle, and reproduce a published Blame Analysis result
+at a finer granularity than the original tool could express.
+\pending{Quantitative results on NAS \texttt{cg} (\S\ref{sec:nascg}) and on
+PETSc solvers (\S\ref{sec:petsc}). The abstract should close with a headline
+number from one of them.}
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+Choosing floating-point precision is a decision most scientific software makes
+once, conservatively, and never revisits. Declaring everything \texttt{double} is
+defensible, cheap to reason about, and --- on the hardware most of this software
+was written for --- nearly free. That last clause no longer holds.
+
+Automated tuning tools for this problem appeared a decade ago and worked.
+Precimonious~\cite{precimonious} treats each floating-point variable as taking a
+type from $\{\texttt{float}, \texttt{double}, \texttt{long double}\}$ and searches
+that space with Zeller and Hildebrandt's delta-debugging
+algorithm~\cite{ddmin}, seeking an assignment that both meets an accuracy
+threshold and runs faster. Blame Analysis~\cite{blame} attacks the resulting
+scalability problem: rather than recompiling and rerunning per candidate, it
+executes the program once under shadow execution, computing for each instruction
+the minimum operand precision that still yields the required result precision,
+and uses the result to prune Precimonious' search space --- $9\times$ faster
+analysis on average, up to $38\times$.
+
+Neither tool is maintained. The natural reading is that the approach did not pan
+out. We think the evidence supports a different reading, and it is visible in the
+tools' own numbers.
+
+\subsection{The observation}
+
+Table~5 of the Blame Analysis paper reports program speedup after tuning, across
+ten programs and four error thresholds ($10^{-4}$ through $10^{-10}$), for both
+Precimonious alone and Blame\,+\,Precimonious. For \texttt{bessel},
+\texttt{gaussian}, \texttt{roots}, and \texttt{rootnewt}, every entry is
+$0.0\%$. For \texttt{polyroots} no entry exceeds $0.4\%$. Real speedups appear
+only for \texttt{sum} ($39.9\%$), \texttt{fft} ($8.3\%$), \texttt{blas}
+($5.1\%$), NAS \texttt{cg} ($7.7$--$7.9\%$), and \texttt{ep} ($0.6\%$). In the
+configuration tables, a majority of cells are marked to indicate that the tools
+selected the \emph{original} program as fastest.
+\todo{Verify each cited cell against the published table before submission; the
+figures above were read from the paper's typeset tables.}
+
+This is not a failure of search. The searches found valid lower-precision
+configurations --- Blame Analysis reports that on average $40\%$ of program
+variables can be declared \texttt{float} (median $28\%$). It is a failure of
+\emph{payoff}. On a 2013 general-purpose CPU, both \texttt{float} and
+\texttt{double} arithmetic issue at similar rates; the gains available are
+narrower vector lanes and better cache residency, and they are offset by the
+conversion instructions a mixed configuration introduces. The Blame Analysis
+authors say so directly, noting that lowering precision does not necessarily
+produce a faster program and that a triage by the programmer is required.
+
+\subsection{Why this is now a different problem}
+
+Three changes since 2016 alter the arithmetic of that trade-off.
+
+\paragraph{Formats below \texttt{float}.} The tuning lattice of the original
+tools was $\{\texttt{float}, \texttt{double}, \texttt{long double}\}$, with
+intermediate \emph{virtual} precisions used internally by Blame Analysis but not
+expressible as storage. Hardware now provides \texttt{bfloat16}, \texttt{fp16},
+\texttt{tf32}, and two 8-bit encodings. A variable that Precimonious could at
+best move from 64 to 32 bits may now move to 8, and the search space is
+correspondingly richer.
+
+\paragraph{Throughput that actually differs by format.} Matrix units on current
+accelerators deliver order-of-magnitude higher throughput at reduced precision.
+The performance term in the dual objective, which was near zero for most
+programs in the original evaluation, is no longer near zero.
+
+\paragraph{Bandwidth-bound kernels.} Much of scientific computing --- sparse
+matrix-vector products above all --- is limited by memory traffic rather than by
+arithmetic. For these, precision is a \emph{storage} decision, and halving the
+width of the dominant array approaches a factor of two in time regardless of what
+the arithmetic units do. This case barely existed in the original benchmark set,
+which was drawn from GSL routines and small NAS kernels.
+
+\subsection{Contributions}
+
+\begin{itemize}
+  \item An argument, grounded in the prior tools' published evaluations, that
+    search-based precision tuning was limited by its era's hardware payoff rather
+    than by its method (\S\ref{sec:background}).
+  \item A framework, \emph{parsimony}, that separates evaluation from search as
+    independent plugin axes, so that a cheap evaluator can drive an expensive
+    search during development and an expensive evaluator confirm the result
+    (\S\ref{sec:design}).
+  \item Clean-room reimplementations of delta-debugging precision search
+    generalized to arbitrary $(\text{exponent}, \text{significand})$ formats,
+    validated against a synthetic oracle independently of any floating-point
+    emulation (\S\ref{sec:search}, \S\ref{sec:validation}).
+  \item Reduced-precision emulation verified bit-identical to hardware
+    \texttt{float32} and \texttt{float16}, including subnormals
+    (\S\ref{sec:emulation}).
+  \item An independent reproduction of a published Blame Analysis result, at a
+    granularity the original lattice could not express
+    (\S\ref{sec:repro}).
+\end{itemize}
+
+\pending{A contribution bullet reporting a quantitative result on a real solver.
+Until \S\ref{sec:petsc} exists this paper is an architecture and a reproduction,
+which is not yet an arXiv-worthy claim.}
+
+\section{Background}
+\label{sec:background}
+
+\subsection{Precimonious}
+
+Precimonious~\cite{precimonious} operates on LLVM bitcode. Given a program, a set
+of test inputs, and an error threshold, it searches for a \emph{type
+configuration}: an assignment of a floating-point type to each program variable.
+The search is delta debugging, with worst-case complexity $O(n^2)$ in the number
+of variables, and each candidate requires recompilation and re-execution. The
+paper reports cases in which analysis takes hours for programs declaring fewer
+than 50 variables with native runtimes under five seconds.
+
+Two practical constraints deserve note because they persist in any successor.
+First, the analysis is performed without optimization, because optimization
+eliminates the very variables the search ranges over --- so the configuration is
+tuned on a program that differs from the one that ships. Second, the search is
+empirical: a configuration meeting $10^{-6}$ will satisfy $10^{-4}$, but the
+configuration found directly for $10^{-4}$ may differ, and may perform better.
+
+\subsection{Blame Analysis}
+
+Blame Analysis~\cite{blame} replaces search with attribution. Each floating-point
+instruction is executed under shadow execution at several operand precisions
+simultaneously --- \texttt{float}, \texttt{double}, and \texttt{double} truncated
+to 4, 6, 8 and 10 significant decimal digits. For a given precision requirement
+on an instruction's result, the analysis records the minimal operand precisions
+that satisfy it; this \emph{blame set} is merged across dynamic instances of the
+instruction by taking the maximum requirement. A backward pass from the target
+statement then yields the set of variables that may be single precision.
+
+The cost structure matters for anyone considering the approach at scale. The
+online variant is bounded by the static instruction count and imposes up to
+$50\times$ runtime overhead. The offline variant finds better configurations but
+is bounded by the \emph{dynamic} trace: it exhausted 256\,GB of memory on NAS
+\texttt{ep} at class~S, the smallest input designed for serial execution.
+
+One remark in that paper is the germ of the present work's approach to scale: the
+authors observe that long-running scientific programs generally use iterative
+solvers, that precision requirements tighten toward the end of execution, and
+that analyzing only the last few iterations is therefore likely to suffice. In
+other words, deciding \emph{what} to analyze is the lever, and it is a modeling
+decision rather than an algorithmic one.
+
+\section{Design}
+\label{sec:design}
+
+\subsection{Two orthogonal axes}
+
+Prior tools bind their search strategy to their measurement technology.
+Precimonious' delta debugging is inseparable from its LLVM~3.0 instrumentation;
+PROMISE's search is inseparable from CADNA. The consequence is that neither
+survives its dependency, and that a search improvement cannot be evaluated
+against a different error model.
+
+Parsimony defines two protocols:
+
+\begin{lstlisting}[language=Python]
+class Evaluator(Protocol):
+    caps: Caps
+    def discover(self) -> ConfigSpace: ...
+    def evaluate(self, config: Config) -> Result: ...
+
+class Search(Protocol):
+    def search(self, space: ConfigSpace,
+               evaluate: Callable[[Config], Result]) -> dict[str, Format]: ...
+\end{lstlisting}
+
+An \texttt{Evaluator} answers what a configuration costs in accuracy, and
+optionally in time; a \texttt{Search} decides which configurations to ask about.
+\texttt{Caps} declares what an evaluator can observe --- which formats, whether it
+requires a rebuild, whether it sees GPU code, its slowdown --- so that a request no
+installed evaluator can serve fails explicitly rather than being silently served
+by something weaker.
+
+The separation has a methodological payoff beyond modularity: it makes the search
+testable in isolation. A synthetic oracle with a known minimal set exercises the
+search with no floating-point emulation involved at all
+(\S\ref{sec:validation}), so a regression in the search is diagnosed where it
+occurs rather than surfacing as an inexplicably poor precision assignment.
+
+\subsection{Formats and emulation}
+\label{sec:emulation}
+
+A format is an (exponent bits, significand bits) pair, which covers the IEEE
+formats, the vendor formats, and \emph{virtual} widths --- a \texttt{float64}
+truncated to $k$ significand bits with the full exponent range. Virtual widths
+are how one asks how many bits a value needs without committing to a storage
+format, and they generalize the truncated-decimal lattice Blame Analysis used
+internally.
+
+Rounding is emulated on \texttt{float64}: the significand is rounded to nearest
+via \texttt{frexp}/\texttt{ldexp} scaling, values above the format's largest
+finite magnitude become infinite, and values below its minimum normal exponent
+are quantized to the appropriate subnormal step. This is exact for any format
+whose range and precision fit within \texttt{float64}, which is every format
+below it; wider formats require a native or instrumented evaluator.
+
+\subsection{Search}
+\label{sec:search}
+
+The delta-debugging adaptation requires one observation to state correctly.
+Delta debugging minimizes a subset subject to a predicate that holds on the full
+set. Here the subset is the set of variables \emph{retained at higher precision},
+and the predicate is that the accuracy goal is met. That predicate is monotone in
+the direction the algorithm assumes --- returning a variable to higher precision
+cannot hurt accuracy --- so the standard algorithm applies unmodified. Where
+monotonicity fails, as when a coarser format is accidentally favorable to a
+particular cancellation, the algorithm still terminates and the result is locally
+rather than globally minimal, which is equally true of the original tools.
+
+The search walks the format ladder from high to low. At each rung, the variables
+still above that rung are candidates for demotion; delta debugging identifies the
+minimal set that must remain above it; the remainder are demoted and the search
+proceeds. This costs $O(n^2)$ evaluations \emph{per rung}, which is the dominant
+scalability concern and the motivation for the prefilter discussed in
+\S\ref{sec:limitations}.
+
+We also provide uniform bisection over the ladder, which finds the lowest single
+format that suffices in $O(\log |\text{ladder}|)$ evaluations. This is not a
+competitor to the mixed search but a control for it: the gap between the uniform
+floor and the mixed configuration is the only honest measure of what the
+expensive search bought.
+
+\section{Validation}
+\label{sec:validation}
+
+\subsection{Emulation against hardware}
+
+Emulated rounding to \texttt{fp32} and \texttt{fp16} is bit-identical to numpy's
+native \texttt{float32} and \texttt{float16} over random samples, including
+inputs in the subnormal range, and \texttt{bfloat16} is verified to retain
+\texttt{fp32}'s exponent range on values that overflow \texttt{fp16}.
+
+\subsection{Search against a synthetic oracle}
+
+The delta-debugging implementation is tested against a predicate that holds
+exactly when a known subset is present. The search recovers that subset exactly,
+its output is verified 1-minimal, and the evaluation count is bounded well below
+exhaustive enumeration. No floating-point emulation participates in these tests.
+
+\subsection{Reproducing a published result}
+\label{sec:repro}
+
+The worked example of the Blame Analysis paper (its Figure~2) computes
+$a^4 - 4a^3 + 6a^2 - 4a + 1$ at $a = 1.84089642$ by repeated multiplication.
+Intermediate terms reach roughly $25$ while the result is near $0.5$, so the
+summation loses about $1.7$ decimal digits to cancellation. The paper concludes
+that only the variable \texttt{factor} inside \texttt{mpow} may be lowered,
+because it holds small exact integers.
+
+Parsimony reaches the same conclusion independently: at a relative tolerance of
+$10^{-8}$, one of eleven variables is lowered, and it is \texttt{factor}. Because
+the ladder extends below \texttt{float}, the result is sharper than the original
+tool could express --- \texttt{factor} holds $6$, $4$ and $1$, so it descends to an
+8-bit format with \emph{zero} error.
+
+We note a discrepancy for the record. The paper's stated all-single result is
+$0.4999990927$; hardware \texttt{float32} evaluation of the program as published
+gives $0.4999980926513672$, which parsimony's emulator matches bit for bit. The
+trailing digits agree and only the sixth decimal differs, which is consistent
+with a transcription error.
+\todo{Confirm against the authoritative PDF text rather than a rendered page, and
+if it stands, note it as an erratum rather than a disagreement.}
+
+\subsection{NAS \texttt{cg}}
+\label{sec:nascg}
+
+\pending{The credibility anchor, and currently absent. NAS \texttt{cg} appears in
+Precimonious' own benchmark set, so its published configurations (Table~4 of
+\cite{blame}: 32 double variables initially, reducing to splits of 2/30, 13/19,
+16/16 and 16/16 at thresholds $10^{-4}$ through $10^{-10}$) and speedups
+($7.7$--$7.9\%$) are directly comparable. It is also one of only five programs in
+that study showing any speedup, so it exercises both halves of the dual
+objective.
+
+Three checks, in order: (i) does the search find a comparable double/float split
+at each threshold --- exact agreement is not expected, since the variable set at
+bitcode level differs from a source-level set and the original was tuned at
+\texttt{-O0}; (ii) what is the evaluation count, which is the baseline any
+prefilter must beat; (iii) is threshold monotonicity respected, since a tighter
+threshold admitting more lowering indicates a bug.}
+
+\section{Case Study: Sparse Iterative Solvers}
+\label{sec:petsc}
+
+\pending{The result that would make this a paper rather than an architecture
+note. Two questions in PETSc~\cite{petsc}, chosen because they are common targets
+rather than exotic ones, and because both have a real payoff on current hardware:
+
+\emph{How many bits does a Jacobian need?} Inexact Newton methods tolerate
+inaccurate Jacobians by construction --- the outer iteration corrects them --- and
+practitioners know this qualitatively. Nobody has published a number. This is a
+direct application of virtual-width search to a quantity whose precision
+requirement is genuinely unknown.
+
+\emph{Mixed-precision preconditioning and matrix storage.} Sparse matrix-vector
+products are bandwidth-bound, so storing the operator in \texttt{fp32} or
+\texttt{bfloat16} while accumulating in \texttt{fp64} is close to a factor of two.
+This is precisely the regime in which the original evaluation's $0.0\%$ becomes a
+real number, which makes it the sharpest available test of this paper's thesis.
+
+Both require an evaluator that can run compiled MPI code, which does not yet
+exist (\S\ref{sec:limitations}).}
+
+\section{Limitations and Future Work}
+\label{sec:limitations}
+
+\paragraph{Search cost.} Delta debugging costs $O(n^2)$ evaluations per ladder
+rung. In the reproduction of \S\ref{sec:repro}, eleven variables at a tight
+tolerance required 350 evaluations. Blame Analysis' prefilter is the established
+remedy and is the most valuable unbuilt component.
+
+\paragraph{No performance measurement.} The numpy evaluator answers how many bits
+the arithmetic requires, never whether a configuration is faster. The dual
+objective that motivates this paper requires an evaluator that compiles and
+times real code. Until one exists, every performance claim here is an argument
+about hardware trends rather than a measurement.
+
+\paragraph{Granularity at scale.} Instruction-level attribution cost $50\times$
+runtime and, in its offline form, 256\,GB on a small benchmark. Applying it to a
+production library is not plausible. We believe the tractable variant is
+attribution at the granularity of \emph{library operations} --- a sparse
+matrix-vector product, an inner product --- rather than LLVM instructions. This
+trades resolution for feasibility, and it shifts the hard step to deciding which
+operations to attribute, which is a modeling judgment informed by reading the
+source.
+
+\paragraph{The optimization gap.} Like its predecessors, any source- or
+bitcode-level variable search tunes a program that the optimizer will
+subsequently transform. This remains unsolved and is a threat to the validity of
+any configuration reported by tools in this family.
+
+\paragraph{Accelerator code.} LLVM-instrumentation evaluators do not observe GPU
+kernels, which is where the reduced-precision payoff is largest. Conclusions must
+presently be established on a CPU path and confirmed empirically on the
+accelerator.
+
+\section{Related Work}
+
+\paragraph{Search-based tuning.} Precimonious~\cite{precimonious} and Blame
+Analysis~\cite{blame} are the direct ancestors. HiFPTuner~\cite{hifptuner} adds
+static analysis to group intermediates and search hierarchically.
+TAFFO~\cite{taffo} targets fixed-point conversion. POP~\cite{pop} takes a static,
+constraint-based route.
+
+\paragraph{Parallel revival.} PROMISE has recently been extended with FloatX to
+support \texttt{bfloat16} and both 8-bit encodings, using CADNA's discrete
+stochastic arithmetic for validation~\cite{promise2026}. That work reaches the
+same conclusion as ours about the value of revisiting these methods for modern
+formats, from an independent lineage, and reports that $43\%$ of variables admit
+32 bits or fewer and $28\%$ admit 16 or fewer. Its benchmarks remain small and
+serial; the gap at HPC scale is what motivates the present design.
+
+\paragraph{Error estimation.} Verificarlo~\cite{verificarlo} instruments LLVM IR
+to provide Monte Carlo arithmetic and variable-precision backends;
+Verrou~\cite{verrou} achieves comparable ends via Valgrind without recompilation;
+CADNA~\cite{cadna} implements discrete stochastic arithmetic through instrumented
+types. All three are candidate evaluators under the protocol of
+\S\ref{sec:design}.
+
+\paragraph{Mixed precision by analysis rather than search.} Where a numerical
+method's error is understood analytically, precision can be assigned by theory
+rather than by search --- iterative refinement in three precisions being the
+canonical example~\cite{carsonhigham}. The two approaches are complementary:
+theory covers the kernel, search covers the surrounding code that no one has
+analyzed.
+
+\section{Conclusion}
+
+\pending{Write once \S\ref{sec:nascg} and \S\ref{sec:petsc} carry results. The
+conclusion should state what the measured payoff is on a bandwidth-bound solver
+and whether it confirms the thesis of \S\ref{sec:intro}; if it does not, that is
+also a publishable result and the paper should say so.}
+
+\section*{Availability}
+
+Source, tests and the case-study harnesses are at
+\url{https://github.com/markadams/parsimony}, BSD-3-Clause. No code from
+Precimonious (BSD-3-Clause, \copyright~2013 UC Berkeley) is reproduced; its
+algorithms are reimplemented from their published descriptions.
+
+\section*{Acknowledgments}
+
+\todo{DOE/ASCR funding statement.}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}
