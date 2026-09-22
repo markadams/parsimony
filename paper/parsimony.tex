@@ -75,8 +75,15 @@ rather than diverging. The same residual may be stored in 16 bits but not
 evaluated in fewer than 33 --- storage precision and arithmetic precision are
 different questions, and a solver that evaluates its residual in low precision
 reports false convergence as fast convergence.
-\pending{Any \emph{measured} performance claim. This paper's thesis is about
-payoff; iteration counts are measured, cost per iteration is not yet.}
+Measuring the payoff on an A100 sharpens rather than confirms our own thesis.
+Storing the operator in \texttt{fp32} costs no iterations and, in a blocked
+layout, $2.86\times$ less time per sparse matrix-vector product than the scalar
+\texttt{fp64} a solver is likely using --- but on a scalar seven-point stencil
+the same precision change buys $1.07\times$, which is the 2013 result reproduced
+on 2026 hardware. The payoff comes from the blocked format at least as much as
+from the hardware, and a tool reporting ``\texttt{fp32} suffices'' has not
+predicted a speedup, because the same answer is worth $2.86\times$ or
+$1.07\times$ depending on a storage decision the tool never sees.
 \end{abstract}
 
 \section{Introduction}
@@ -190,13 +197,65 @@ $b = 3$ the index term is already small. Narrowing the \emph{vector} rather than
 the matrix buys under $7\%$ in either layout, its traffic being $O(n)$ against
 the matrix's $O(\mathrm{nnz})$.
 
-Two things follow, and both bound the performance claims in this paper. First,
-reduced precision and blocking are complementary rather than alternative ways to
-cut traffic, and the combination is worth more than either alone. Second, a
-precision-tuning tool that reports ``\texttt{fp32} suffices'' has not thereby
-predicted a speedup: the payoff depends on a storage decision the tool never
-sees. This is a concrete instance of the dual objective the original tools tried
-to optimize directly, and an argument for the factorization of
+\begin{table}[t]
+\centering\small
+\begin{tabular}{@{}llrrrrrr@{}}
+\toprule
+layout & format & ms & GB/s & \% peak & measured & model & realized\\
+\midrule
+\texttt{AIJ} ($b{=}1$)  & fp64 & 1.094 & 1358 & 67\% & --- & --- & ---\\
+\texttt{AIJ}  & fp32 & 0.902 & 1110 & 54\% & $1.21\times$ & $1.48\times$ & 44\%\\
+\texttt{AIJ}  & fp16 & 0.811 &  936 & 46\% & $1.35\times$ & $1.96\times$ & 36\%\\
+\texttt{BAIJ} ($b{=}3$) & fp64 & 0.668 & 1573 & 77\% & --- & --- & ---\\
+\texttt{BAIJ} & fp32 & 0.382 & 1482 & 73\% & $\mathbf{1.75\times}$ & $1.86\times$ & \textbf{87\%}\\
+\texttt{BAIJ} & fp16 & 0.290 & 1115 & 55\% & $2.30\times$ & $3.25\times$ & 58\%\\
+\bottomrule
+\end{tabular}
+\caption{One sparse matrix-vector product on an A100-SXM4-80GB (peak 2039 GB/s),
+for the \emph{same} elasticity matrix stored two ways: $b=3$ blocked, and
+expanded to scalar. ``Realized'' is the fraction of the byte model's predicted
+gain that appeared. Against the scalar \texttt{fp64} baseline, blocking alone
+gives $1.64\times$ (model $1.41\times$) and blocked \texttt{fp32} gives
+$2.86\times$ (model $2.63\times$).}
+\label{tab:spmv}
+\end{table}
+
+Table~\ref{tab:spmv} is the measurement, on one A100. Three things in it bound
+every performance claim in this paper.
+
+\emph{Blocked \texttt{fp32} is the real win, and it beats the model.} It realizes
+$87\%$ of its predicted gain, and against scalar \texttt{fp64} --- what a PETSc
+user has today --- it delivers $2.86\times$ where the byte model predicted
+$2.63\times$. Blocking over-delivers because it does not only move fewer bytes,
+it moves them better: $77\%$ of peak bandwidth against $67\%$ for the scalar
+layout, from fewer and more regular loads.
+
+\emph{The 2013 result survives for scalar formats.} On a seven-point stencil,
+\texttt{fp32} buys $1.07\times$ --- $19\%$ of its predicted $1.37\times$, which
+is to say nothing. That is the same ``do not bother'' the Blame Analysis
+evaluation reported, on 2026 hardware: at seven nonzeros per row the kernel is
+latency-bound rather than bandwidth-bound, and narrowing the values does not
+help. This sharpens the thesis of \S\ref{sec:intro} rather than confirming it. It
+is not simply that the hardware changed. On the scalar formats the original tools
+targeted, reduced precision still buys almost nothing on a thin stencil; what
+unlocks the payoff is the blocked format, a data-structure choice.
+
+\emph{\texttt{fp16} underdelivers everywhere}, realizing $58\%$ even blocked.
+Achieved bandwidth falls from 1573 to 1115 GB/s --- less data moved, but not
+proportionally faster --- so below about four-byte values the kernel has left the
+bandwidth-bound regime and per-element instruction cost dominates. Some of that
+may be our kernel rather than the hardware, and we do not claim this is the best
+achievable \texttt{fp16} figure; but the direction is unambiguous, and it makes
+the format-width ratio an upper bound that \texttt{fp32} approaches and
+\texttt{fp16} does not.
+
+Two conclusions follow. Reduced precision and blocking are complementary rather
+than alternative ways to cut traffic, and the combination is worth more than
+either alone. And a precision-tuning tool that reports ``\texttt{fp32} suffices''
+has not thereby predicted a speedup: on this evidence the same answer is worth
+$2.86\times$ or $1.07\times$ depending on a storage decision the tool never sees.
+That is a concrete instance of the dual objective the original tools tried to
+optimize directly, and an argument for the factorization of
 \S\ref{sec:observable}, in which precision search and cost measurement are kept
 apart.
 
@@ -703,12 +762,24 @@ concrete demonstration of the scope statement in \S\ref{sec:limitations}.
 The prefilter reduces 72, 80 and 55 evaluations to 13, 18 and 14, for 0--5\%
 more storage.
 
-\pending{Tier 2: the cost-per-iteration measurement. Everything above is a count
-of iterations; the design factorizes time as iterations $\times$ cost per
-iteration and measures the second factor with a templated SpMV kernel on the
-target hardware, checked at the uniform-\texttt{fp32} point where PETSc can be
-built and timed end to end. Until that exists, ``\texttt{fp32} Jacobian storage
-is free'' is a statement about iterations.}
+\subsection{Putting the two tiers together}
+
+The design factorizes time as iterations $\times$ cost per iteration, and both
+factors are now measured. Storing the Jacobian in \texttt{fp32} costs no
+iterations (Table~\ref{tab:bratu-pareto}) and, in a blocked layout, buys
+$1.75\times$ per iteration against blocked \texttt{fp64}, or $2.86\times$ against
+the scalar \texttt{fp64} a solver is likely to be using
+(Table~\ref{tab:spmv}). Those multiply: the same accuracy, at a little over a
+third of the operator's memory traffic.
+
+The composition also shows where the two tiers disagree, which is the useful
+part. Tier one says \texttt{fp16} Jacobian storage costs a third more iterations
+and is otherwise viable; tier two says \texttt{fp16} recovers only $58\%$ of its
+predicted bandwidth gain. Multiplying, blocked \texttt{fp16} is $2.30\times$ per
+iteration at $1.33\times$ the iterations --- a net $1.73\times$, slightly
+\emph{worse} than \texttt{fp32}'s $1.75\times$ at no iteration cost. Neither tier
+could have reached that conclusion alone, and a search minimizing modeled time
+would have had to be told the storage layout to find it.
 
 \section{Limitations and Future Work}
 \label{sec:limitations}
@@ -833,14 +904,29 @@ residual stores in 16 bits and evaluates in no fewer than 33 --- and that a
 solver evaluating its residual in low precision will report false convergence
 unless convergence is judged by an independent high-precision residual.
 
-\pending{The claim this paper cannot yet make. Iteration counts are measured;
-cost per iteration is not, because no evaluator compiles and times code
-(\S\ref{sec:limitations}). The design factorizes time as the product of the two
-and specifies the measurement (a templated SpMV kernel, checked against an
-end-to-end uniform-\texttt{fp32} PETSc build). Until it exists, the paper
-establishes that the accuracy headroom is real and structured, and argues that
-the payoff now follows. If it turns out not to, that is equally publishable and
-should be stated as such.}
+Finally, the payoff. We set out to show that the hardware had changed enough to
+make these methods worth reviving, and the measurement does not say quite that.
+Blocked \texttt{fp32} operator storage costs no iterations and $2.86\times$ less
+time per product than scalar \texttt{fp64}, which is the result we hoped for. But
+scalar \texttt{fp32} on a seven-point stencil buys $1.07\times$ --- $19\%$ of what
+the byte model allows, and indistinguishable from the $0.0\%$ the 2013 evaluation
+reported. On the data structures the original tools targeted, their conclusion
+still holds.
+
+What changed is therefore not only the hardware but the format. Reduced precision
+pays when the index traffic it cannot reduce has already been amortized by
+blocking, and elasticity, multi-species transport and any other multi-component
+physics amortize it by construction. That is a narrower claim than the one we
+started with and a more useful one, because it says where to look. It also says
+what a precision-tuning tool cannot do on its own: the same recommendation is
+worth $2.86\times$ or $1.07\times$ depending on a storage decision outside its
+model, which is why we factorize the objective rather than search on it.
+
+\pending{One measurement would complete the argument: the end-to-end check at the
+uniform-\texttt{fp32} point, where PETSc can be built with
+\texttt{-{}-with-precision=single} and a full solve timed, confirming that
+iterations $\times$ cost per iteration predicts wall time on a real solver rather
+than on an extracted kernel. The single-precision build exists; the run does not.}
 
 \section*{Availability}
 

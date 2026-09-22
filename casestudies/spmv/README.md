@@ -6,8 +6,8 @@ function of storage format, so that
 
     time  =  iterations (tier 1)  ×  cost per iteration (tier 2)
 
-has a measured second factor. Nothing here has been run on hardware yet; the byte
-model and the matrix are checked on the host.
+has a measured second factor. **Measured on an A100-SXM4-80GB**, 2026-09-22;
+raw output in [`results-a100.txt`](results-a100.txt), job took 36 seconds.
 
 ```
 c++ -std=c++17 -O2 test_stencil.cpp -o test_stencil && ./test_stencil   # no GPU
@@ -18,6 +18,65 @@ sbatch run_perlmutter.sh
 The SpMV sweep needs only a Kokkos+CUDA arch — it templates its own storage
 types, so a single-precision PETSc build is not required. That build is for the
 separate end-to-end check of the factorization at the uniform-fp32 point.
+
+## Measured results
+
+Same elasticity matrix (`bs=3`, 27 blocks/block-row, 512k block rows, 121M scalar
+nonzeros), stored two ways, on one A100. Peak HBM2e is 2039 GB/s. "Realized" is
+the fraction of the byte model's predicted gain that actually appeared.
+
+| layout | format | ms | GB/s | % peak | measured | model | realized |
+|---|---|---|---|---|---|---|---|
+| AIJ (bs=1)  | fp64 | 1.094 | 1358 | 67% | — | — | — |
+| AIJ  | fp32 | 0.902 | 1110 | 54% | 1.21× | 1.48× | 44% |
+| AIJ  | fp16 | 0.811 |  936 | 46% | 1.35× | 1.96× | 36% |
+| **BAIJ (bs=3)** | fp64 | 0.668 | 1573 | **77%** | — | — | — |
+| **BAIJ** | fp32 | **0.382** | 1482 | 73% | **1.75×** | 1.86× | **87%** |
+| **BAIJ** | fp16 | 0.290 | 1115 | 55% | 2.30× | 3.25× | 58% |
+
+Against the scalar fp64 baseline — the thing a PETSc user actually has today:
+
+| | measured | model |
+|---|---|---|
+| BAIJ fp64 (blocking alone) | **1.64×** | 1.41× |
+| BAIJ fp32 | **2.86×** | 2.63× |
+| BAIJ fp16 | 3.77× | 4.58× |
+
+### What it says
+
+**Blocked fp32 is the real win, and it beats the model.** BAIJ fp32 realizes 87%
+of its predicted gain, and against scalar fp64 it delivers 2.86× where the byte
+model predicted 2.63×. Blocking *over*-delivers because it does not only move
+fewer bytes — it moves them better, reaching 77% of peak bandwidth against AIJ's
+67%. Fewer, larger, more regular loads.
+
+**The 2013 result survives for scalar formats.** On the 7-point stencil, fp32
+buys 1.07× — 19% of its predicted 1.37×, which is to say nothing. That is the
+same "don't bother" Blame Analysis reported, on 2026 hardware. At 7 nonzeros per
+row the kernel is latency-bound, not bandwidth-bound, and narrowing the values
+does not help. Scalar 27-point does better (1.27×) but still realizes only 59%.
+
+This sharpens the paper's thesis. It is **not** simply that hardware changed. On
+the scalar formats the original tools targeted, reduced precision still buys
+almost nothing on a thin stencil. What unlocks the payoff is the *blocked
+format* — a data-structure choice, not a hardware one.
+
+**fp16 underdelivers everywhere**, realizing 58% even in BAIJ. Achieved bandwidth
+collapses from 1573 to 1115 GB/s: the kernel is moving less data but not
+proportionally faster, so below about 4-byte values it has left the
+bandwidth-bound regime and per-element instruction cost dominates. Part of that
+may be this kernel rather than the hardware — we do not claim the fp16 figure is
+the best achievable — but the direction is clear, and it means the format-width
+ratio is an upper bound that fp32 approaches and fp16 does not.
+
+### Correctness
+
+BAIJ and its scalar expansion return **identical checksums at every format** —
+1.88300e+06 (fp64 and fp32), 1.87715e+06 (bf16), 1.88282e+06 (fp16). The two
+layouts hold the same matrix and the kernel computes the same thing from both,
+which is what makes the layout comparison a comparison and not two experiments.
+bf16 and fp16 differ from fp64 in the 4th and 5th digit respectively, as their
+significands predict.
 
 ## The model, and why blocking is the interesting axis
 
