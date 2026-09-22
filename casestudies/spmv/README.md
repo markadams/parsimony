@@ -69,6 +69,25 @@ may be this kernel rather than the hardware — we do not claim the fp16 figure 
 the best achievable — but the direction is clear, and it means the format-width
 ratio is an upper bound that fp32 approaches and fp16 does not.
 
+### Storage, not tensor cores
+
+fp16 and bf16 here are **storage formats only**. The kernel loads 2-byte values
+and converts to `double` for the multiply-add, so the arithmetic is scalar FP64
+throughout. Disassembling the binary confirms it: zero `HMMA`/`IMMA`/`BMMA`
+instructions, 50 `DFMA`, no `FFMA`, and 44 `F2F` conversions.
+
+This is not an oversight. Tensor cores operate on dense tiles — 16×16×16 at
+smallest for the half-precision instruction — so a 3×3 elasticity block fills 9
+of 256 slots, and NVIDIA's tensor-core sparse path requires block sizes of 16 or
+more for the same reason. At `bs = 3` the matrix units are simply unreachable.
+The payoff measured here is memory traffic, and nothing else.
+
+The 44 conversion instructions are also the likely reason fp16 underdelivers:
+once the value traffic is small enough, per-element conversion and issue cost
+dominate. Accumulating in fp32 rather than fp64 after the load would halve the
+conversion width and use `FFMA` (19.5 vs 9.7 TFLOP/s on A100); whether that
+closes the gap is an open question and a cheap experiment.
+
 ### Correctness
 
 BAIJ and its scalar expansion return **identical checksums at every format** —

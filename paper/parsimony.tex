@@ -47,10 +47,13 @@ bought a little vectorization and cache residency, net of the casts it
 introduced, and the tools frequently reported that the original program was
 fastest.
 
-The objective function has since changed. Reduced precision now addresses tensor
-cores, \texttt{bfloat16} and 8-bit formats, and bandwidth-bound kernels in which
+The objective function has since changed. Reduced precision now addresses
+\texttt{bfloat16} and 8-bit storage formats and bandwidth-bound kernels, in which
 narrowing a matrix's storage cuts memory traffic --- though by less than the
-format width suggests, for reasons we quantify. We present
+format width suggests, for reasons we quantify, and not at all in some cases we
+measure. Tensor cores, the usual motivation for mixed precision, play no part
+here: they need dense tiles far larger than a small sparse block, and our kernels
+issue no matrix instructions. We present
 \emph{parsimony}, a precision-tuning framework that separates the two concerns
 prior tools fused --- how a precision configuration is \emph{evaluated}, and how
 the configuration space is \emph{searched} --- and reimplements the delta-debugging
@@ -147,9 +150,18 @@ best move from 64 to 32 bits may now move to 8, and the search space is
 correspondingly richer.
 
 \paragraph{Throughput that actually differs by format.} Matrix units on current
-accelerators deliver order-of-magnitude higher throughput at reduced precision.
-The performance term in the dual objective, which was near zero for most
-programs in the original evaluation, is no longer near zero.
+accelerators deliver order-of-magnitude higher throughput at reduced precision,
+and this is what most often motivates mixed precision. It is worth saying plainly
+that it is \emph{not} the mechanism at work in this paper. Tensor cores operate on
+dense tiles --- $16\times16\times16$ at smallest for the half-precision
+instruction --- so a $3\times3$ elasticity block fills nine of two hundred and
+fifty-six slots, and NVIDIA's own tensor-core sparse path requires block sizes of
+16 or more for that reason. Our kernels use no matrix instructions at all;
+inspection of the generated assembly finds zero \texttt{HMMA} and only scalar
+\texttt{DFMA}. Reduced precision here is a \emph{storage} decision, and the
+payoff we measure is memory traffic, not arithmetic throughput. For small-block
+sparse solvers, that is the honest framing: the matrix units are unreachable, and
+the bandwidth is not.
 
 \paragraph{Bandwidth-bound kernels.} Much of scientific computing --- sparse
 matrix-vector products above all --- is limited by memory traffic rather than by
