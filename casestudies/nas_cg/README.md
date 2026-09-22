@@ -1,45 +1,122 @@
-# Validation: NAS `cg`
+# Case study: conjugate gradient
 
-The credibility anchor. NAS conjugate gradient is in Precimonious' own benchmark
-set, so its published configuration and speedup are directly comparable — if the
-clean-room `ddmin` here cannot reproduce them, nothing built on top is trustworthy.
+The credibility anchor. NAS `cg` is in Precimonious' own benchmark set and is one
+of only five programs in the Blame Analysis study that showed any speedup, so it
+exercises both halves of the dual objective.
 
-## Published numbers to reproduce
+Run it with `python run.py`; results land in `results.json`.
 
-From Blame Analysis (ICSE'16), Tables 4 and 5. The `Initial` column gives 32 double
-and 0 float variables declared in the program.
+## What is and is not comparable
 
-| Error threshold | Blame (D/F) | Blame + Precimonious (D/F) | Precimonious (D/F) | Speedup (B+P / P) |
-|---|---|---|---|---|
-| 1e-4  | 26 / 6 | 2 / 30  | 2 / 30  | 7.7% / 7.7% |
-| 1e-6  | 28 / 4 | 13 / 19 | 13 / 19 | 7.9% / 7.9% |
-| 1e-8  | 28 / 4 | 16 / 16 | 12 / 20 | 7.9% / 7.4% |
-| 1e-10 | 28 / 4 | 16 / 16 | 16 / 16 | 7.9% / 7.9% |
+The kernel here (`examples/nas_cg.py`) transcribes the CG inner loop with the C
+variable names preserved, but it is **not** the NAS benchmark:
 
-`cg` is one of only five programs in the study where tuning produced any speedup at
-all, which is exactly why it is the right validation target: the accuracy result and
-the performance result are both non-trivial.
+| | NAS `cg` | here |
+|---|---|---|
+| operator | randomly generated sparse | variable-coefficient diffusion, 3 grids |
+| tuned variables | 32 declared in the C program | 10 working-set quantities |
+| formats | fp32 / fp64 / fp80 | fp64 down to two 8-bit encodings |
+| iteration count | fixed 25 | calibrated per case to fp64 convergence |
 
-## What to check, in order
+So **variable counts are not comparable**. What is comparable is the character of
+the answer: which quantities need precision and which do not.
 
-1. **Configuration agreement.** Does `PrecisionDDMin` find a comparable double/float
-   split at each threshold? Exact agreement is not expected — the variable set at
-   LLVM bitcode level differs from a Python or C source-level set, and the paper
-   tuned at `-O0` because optimization deletes variables. Agreement in *count and
-   character* (which variables survive in double) is the bar.
-2. **Search cost.** The paper reports Precimonious taking hours on programs with
-   fewer than 50 variables. Record probe counts here; they are the baseline the
-   blame prefilter has to beat.
-3. **Threshold monotonicity.** A tighter threshold must never admit more lowering.
-   Table 4 satisfies this; a search that violates it has a monotonicity bug.
+## Results
 
-## Status
+Full search (no prefilter), relative error against the fp64 run, three cases:
 
-Not started. Needs an evaluator that can run the benchmark — either a numpy
-transcription of the `cg` kernel (fast to write, loses the performance half of the
-result) or a verificarlo/native evaluator (slower to build, but the only way to
-check the speedup column).
+| tolerance | bits | A | z | r | q | p | rho | rho0 | d | alpha | beta |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1e-4  | 208 | fp32 | fp32 | fp32 | fp32 | bf16 | bf16 | bf16 | bf16 | fp8e5m2 | fp8e5m2 |
+| 1e-6  | 224 | fp32 | fp32 | fp32 | fp32 | bf16 | bf16 | bf16 | bf16 | bf16 | bf16 |
+| 1e-8  | 419 | fp64 | fp64 | fp64 | fp64 | fp32 | fp32 | tf32 | fp32 | fp32 | fp16 |
+| 1e-10 | 640 | fp64 | fp64 | fp64 | fp64 | fp64 | fp64 | fp64 | fp64 | fp64 | fp64 |
 
-The numpy transcription is the right first move: it validates the *search* against
-published configurations without needing a compiler, which is the half that matters
-for trusting everything else.
+Storage is monotone in tolerance (208 → 224 → 419 → 640 bits): tightening never
+admits more lowering, which is the basic consistency check on the search.
+
+Three things stand out.
+
+**The scalars are cheap.** `alpha`, `beta`, `rho`, `rho0` and `d` sit at or below
+bf16 wherever the vectors are at fp32, and `alpha`/`beta` reach 8 bits at 1e-4.
+This is the CG form of a familiar fact: the step length and conjugacy coefficient
+only steer the iteration, and an inaccurate step is corrected by the next residual.
+The quantities that *carry state* — the matrix and the vectors — set the achievable
+accuracy.
+
+**The search direction is cheaper than the residual.** `p` is consistently a rung
+or two below `r`, `z` and `q`. Same mechanism: `p` sets a direction, while `r` and
+`z` accumulate the answer.
+
+**The matrix tracks the state vectors**, at fp32 for tolerances of 1e-6 and looser
+and fp64 beyond. Since sparse matrix-vector products are bandwidth-bound, this is
+the storage decision with the largest performance consequence, and the answer is
+not trivially "fp64 everywhere".
+
+### Prefilter trade
+
+| tolerance | probes (full → prefiltered) | speedup | bits (full → prefiltered) |
+|---|---|---|---|
+| 1e-4  | 214 → 35 | 6.1× | 208 → 224 (+7.7%) |
+| 1e-6  | 229 → 36 | 6.4× | 224 → 227 (+1.3%) |
+| 1e-8  | 306 → 27 | 11.3× | 419 → 448 (+6.9%) |
+| 1e-10 | 294 → 20 | 14.7× | 640 → 640 (0%) |
+
+6–15× fewer evaluations for at most 8% more bits. For comparison, Blame Analysis
+reported its prefilter making the combined analysis 9× faster on average, by a far
+more expensive mechanism — shadow execution at instruction granularity, costing up
+to 50× runtime.
+
+## Comparison with the published result
+
+Blame Analysis Table 4 for `cg`, as a fraction of variables lowered below double:
+
+| tolerance | published (B+P) | here |
+|---|---|---|
+| 1e-4  | 30/32 = 94% | 10/10 = 100% |
+| 1e-6  | 19/32 = 59% | 10/10 = 100% |
+| 1e-8  | 16/32 = 50% | 6/10 = 60% |
+| 1e-10 | 16/32 = 50% | 0/10 = 0% |
+
+Partial agreement: both lower nearly everything at 1e-4 and roughly half at 1e-8.
+The divergence at 1e-10 is a property of the acceptance criterion, not of the
+search — see below.
+
+## Threats to validity found while building this
+
+Three experimental-design errors were caught here. Each produced a plausible-looking
+result that was meaningless, and each is cheap to make.
+
+**A constant-coefficient operator makes the matrix look free.** The first version
+used a five-point Laplacian, whose entries are 4 and −1 — both exactly representable
+in every format down to 8 bits. `A` came out at fp8 at *every* tolerance including
+1e-10, which reads as a dramatic finding and is actually the statement that
+rounding a no-op changes nothing. Generic matrix entries are required for the
+storage question to mean anything.
+
+**A fixed iteration count leaves well-conditioned cases in the noise floor.**
+Running 120 iterations on problems that converge in 31–76 meant the tail iterations
+operated on noise-level residuals, where `rho = ||r||²` underflows at low precision
+and the run returns NaN. The search was then partly measuring underflow in dead
+iterations. Counts are now calibrated per case from the fp64 run.
+
+**One input lets the search cheat.** See `examples/mpow.py`: with a single input, a
+tolerance can be met by coarsening an *output* until it quantizes onto a lattice
+point near the reference. Three cases are used here for that reason.
+
+## A limitation of the fp64-reference criterion
+
+At 1e-10 every variable comes back fp64, and this persists after tightening the
+reference's own convergence to 7e-13 — so it is not a convergence artifact.
+
+Reduced-precision CG does not converge to the *same iterate* as fp64 CG; it
+converges to a nearby but different point. Demanding agreement with the fp64 answer
+to ten digits therefore demands reproducing a particular rounding trajectory, not
+merely solving the problem well. As the tolerance approaches the solver's own
+convergence level, the Precimonious-style acceptance criterion stops measuring
+solution quality and starts measuring bit-reproduction.
+
+For iterative solvers, a criterion phrased on the *residual*, or on error against
+the exact solution, would be better posed than one phrased on agreement with a
+full-precision run. That is a change to the acceptance criterion rather than to the
+search, and it applies to this whole family of tools.

@@ -1,0 +1,507 @@
+[
+ {
+  "tol": 0.0001,
+  "prefilter": false,
+  "tolerance": 0.0001,
+  "uniform_floor": "fp32",
+  "uniform_probes": 4,
+  "mixed": {
+   "A": "fp32",
+   "alpha": "fp8e5m2",
+   "beta": "fp8e5m2",
+   "d": "bf16",
+   "p": "bf16",
+   "q": "fp32",
+   "r": "fp32",
+   "rho": "bf16",
+   "rho0": "bf16",
+   "z": "fp32"
+  },
+  "mixed_counts": {
+   "bf16": 4,
+   "fp32": 4,
+   "fp8e5m2": 2
+  },
+  "search_probes": 214,
+  "prefilter_probes": 0,
+  "mixed_error": 3.790855385022746e-05,
+  "variables": 10,
+  "bits_before": 640,
+  "bits_after": 208,
+  "space_before": 282475249,
+  "space_after": 282475249,
+  "trace": [
+   [
+    "fp32",
+    10,
+    10
+   ],
+   [
+    "tf32",
+    6,
+    10
+   ],
+   [
+    "bf16",
+    6,
+    10
+   ],
+   [
+    "fp16",
+    0,
+    4
+   ],
+   [
+    "fp8e5m2",
+    2,
+    10
+   ],
+   [
+    "fp8e4m3",
+    0,
+    8
+   ]
+  ],
+  "floors": {},
+  "bit_reduction": 0.675,
+  "total_probes": 214
+ },
+ {
+  "tol": 0.0001,
+  "prefilter": true,
+  "tolerance": 0.0001,
+  "uniform_floor": "fp32",
+  "uniform_probes": 4,
+  "mixed": {
+   "A": "fp32",
+   "alpha": "bf16",
+   "beta": "fp16",
+   "d": "bf16",
+   "p": "fp16",
+   "q": "fp32",
+   "r": "fp32",
+   "rho": "bf16",
+   "rho0": "bf16",
+   "z": "fp32"
+  },
+  "mixed_counts": {
+   "bf16": 4,
+   "fp16": 2,
+   "fp32": 4
+  },
+  "search_probes": 5,
+  "prefilter_probes": 30,
+  "mixed_error": 1.1324884572336707e-06,
+  "variables": 10,
+  "bits_before": 640,
+  "bits_after": 224,
+  "space_before": 282475249,
+  "space_after": 192000,
+  "trace": [
+   [
+    "fp32",
+    10,
+    10
+   ],
+   [
+    "tf32",
+    6,
+    6
+   ],
+   [
+    "bf16",
+    4,
+    4
+   ],
+   [
+    "fp16",
+    2,
+    2
+   ],
+   [
+    "fp8e4m3",
+    0,
+    1
+   ]
+  ],
+  "floors": {
+   "A": "fp32",
+   "alpha": "fp8e4m3",
+   "beta": "fp16",
+   "d": "bf16",
+   "p": "fp16",
+   "q": "fp32",
+   "r": "fp32",
+   "rho": "bf16",
+   "rho0": "bf16",
+   "z": "fp32"
+  },
+  "bit_reduction": 0.65,
+  "total_probes": 35
+ },
+ {
+  "tol": 1e-06,
+  "prefilter": false,
+  "tolerance": 1e-06,
+  "uniform_floor": "fp32",
+  "uniform_probes": 4,
+  "mixed": {
+   "A": "fp32",
+   "alpha": "bf16",
+   "beta": "bf16",
+   "d": "bf16",
+   "p": "bf16",
+   "q": "fp32",
+   "r": "fp32",
+   "rho": "bf16",
+   "rho0": "bf16",
+   "z": "fp32"
+  },
+  "mixed_counts": {
+   "bf16": 6,
+   "fp32": 4
+  },
+  "search_probes": 229,
+  "prefilter_probes": 0,
+  "mixed_error": 9.536745120277335e-07,
+  "variables": 10,
+  "bits_before": 640,
+  "bits_after": 224,
+  "space_before": 282475249,
+  "space_after": 282475249,
+  "trace": [
+   [
+    "fp32",
+    10,
+    10
+   ],
+   [
+    "tf32",
+    6,
+    10
+   ],
+   [
+    "bf16",
+    6,
+    10
+   ],
+   [
+    "fp16",
+    0,
+    4
+   ],
+   [
+    "fp8e5m2",
+    0,
+    10
+   ],
+   [
+    "fp8e4m3",
+    0,
+    10
+   ]
+  ],
+  "floors": {},
+  "bit_reduction": 0.65,
+  "total_probes": 229
+ },
+ {
+  "tol": 1e-06,
+  "prefilter": true,
+  "tolerance": 1e-06,
+  "uniform_floor": "fp32",
+  "uniform_probes": 4,
+  "mixed": {
+   "A": "fp32",
+   "alpha": "fp16",
+   "beta": "fp16",
+   "d": "bf16",
+   "p": "tf32",
+   "q": "fp32",
+   "r": "fp32",
+   "rho": "bf16",
+   "rho0": "bf16",
+   "z": "fp32"
+  },
+  "mixed_counts": {
+   "bf16": 3,
+   "fp16": 2,
+   "fp32": 4,
+   "tf32": 1
+  },
+  "search_probes": 6,
+  "prefilter_probes": 30,
+  "mixed_error": 8.940693354556281e-07,
+  "variables": 10,
+  "bits_before": 640,
+  "bits_after": 227,
+  "space_before": 282475249,
+  "space_after": 128000,
+  "trace": [
+   [
+    "fp32",
+    10,
+    10
+   ],
+   [
+    "tf32",
+    6,
+    6
+   ],
+   [
+    "bf16",
+    3,
+    3
+   ],
+   [
+    "fp16",
+    2,
+    3
+   ]
+  ],
+  "floors": {
+   "A": "fp32",
+   "alpha": "fp16",
+   "beta": "fp16",
+   "d": "bf16",
+   "p": "fp16",
+   "q": "fp32",
+   "r": "fp32",
+   "rho": "bf16",
+   "rho0": "bf16",
+   "z": "fp32"
+  },
+  "bit_reduction": 0.6453,
+  "total_probes": 36
+ },
+ {
+  "tol": 1e-08,
+  "prefilter": false,
+  "tolerance": 1e-08,
+  "uniform_floor": "fp64",
+  "uniform_probes": 3,
+  "mixed": {
+   "A": "fp64",
+   "alpha": "fp32",
+   "beta": "fp16",
+   "d": "fp32",
+   "p": "fp32",
+   "q": "fp64",
+   "r": "fp64",
+   "rho": "fp32",
+   "rho0": "tf32",
+   "z": "fp64"
+  },
+  "mixed_counts": {
+   "fp16": 1,
+   "fp32": 4,
+   "fp64": 4,
+   "tf32": 1
+  },
+  "search_probes": 306,
+  "prefilter_probes": 0,
+  "mixed_error": 8.486303326726293e-09,
+  "variables": 10,
+  "bits_before": 640,
+  "bits_after": 419,
+  "space_before": 282475249,
+  "space_after": 282475249,
+  "trace": [
+   [
+    "fp32",
+    6,
+    10
+   ],
+   [
+    "tf32",
+    2,
+    10
+   ],
+   [
+    "bf16",
+    0,
+    10
+   ],
+   [
+    "fp16",
+    1,
+    10
+   ],
+   [
+    "fp8e5m2",
+    0,
+    10
+   ],
+   [
+    "fp8e4m3",
+    0,
+    10
+   ]
+  ],
+  "floors": {},
+  "bit_reduction": 0.3453,
+  "total_probes": 306
+ },
+ {
+  "tol": 1e-08,
+  "prefilter": true,
+  "tolerance": 1e-08,
+  "uniform_floor": "fp64",
+  "uniform_probes": 3,
+  "mixed": {
+   "A": "fp64",
+   "alpha": "fp32",
+   "beta": "fp32",
+   "d": "fp32",
+   "p": "fp32",
+   "q": "fp64",
+   "r": "fp64",
+   "rho": "fp32",
+   "rho0": "fp32",
+   "z": "fp64"
+  },
+  "mixed_counts": {
+   "fp32": 6,
+   "fp64": 4
+  },
+  "search_probes": 1,
+  "prefilter_probes": 26,
+  "mixed_error": 8.160845332835902e-10,
+  "variables": 10,
+  "bits_before": 640,
+  "bits_after": 448,
+  "space_before": 282475249,
+  "space_after": 64,
+  "trace": [
+   [
+    "fp32",
+    6,
+    6
+   ]
+  ],
+  "floors": {
+   "A": "fp64",
+   "alpha": "fp32",
+   "beta": "fp32",
+   "d": "fp32",
+   "p": "fp32",
+   "q": "fp64",
+   "r": "fp64",
+   "rho": "fp32",
+   "rho0": "fp32",
+   "z": "fp64"
+  },
+  "bit_reduction": 0.3,
+  "total_probes": 27
+ },
+ {
+  "tol": 1e-10,
+  "prefilter": false,
+  "tolerance": 1e-10,
+  "uniform_floor": "fp64",
+  "uniform_probes": 3,
+  "mixed": {
+   "A": "fp64",
+   "alpha": "fp64",
+   "beta": "fp64",
+   "d": "fp64",
+   "p": "fp64",
+   "q": "fp64",
+   "r": "fp64",
+   "rho": "fp64",
+   "rho0": "fp64",
+   "z": "fp64"
+  },
+  "mixed_counts": {
+   "fp64": 10
+  },
+  "search_probes": 294,
+  "prefilter_probes": 0,
+  "mixed_error": 0.0,
+  "variables": 10,
+  "bits_before": 640,
+  "bits_after": 640,
+  "space_before": 282475249,
+  "space_after": 282475249,
+  "trace": [
+   [
+    "fp32",
+    0,
+    10
+   ],
+   [
+    "tf32",
+    0,
+    10
+   ],
+   [
+    "bf16",
+    0,
+    10
+   ],
+   [
+    "fp16",
+    0,
+    10
+   ],
+   [
+    "fp8e5m2",
+    0,
+    10
+   ],
+   [
+    "fp8e4m3",
+    0,
+    10
+   ]
+  ],
+  "floors": {},
+  "bit_reduction": 0.0,
+  "total_probes": 294
+ },
+ {
+  "tol": 1e-10,
+  "prefilter": true,
+  "tolerance": 1e-10,
+  "uniform_floor": "fp64",
+  "uniform_probes": 3,
+  "mixed": {
+   "A": "fp64",
+   "alpha": "fp64",
+   "beta": "fp64",
+   "d": "fp64",
+   "p": "fp64",
+   "q": "fp64",
+   "r": "fp64",
+   "rho": "fp64",
+   "rho0": "fp64",
+   "z": "fp64"
+  },
+  "mixed_counts": {
+   "fp64": 10
+  },
+  "search_probes": 0,
+  "prefilter_probes": 20,
+  "mixed_error": 0.0,
+  "variables": 10,
+  "bits_before": 640,
+  "bits_after": 640,
+  "space_before": 282475249,
+  "space_after": 1,
+  "trace": [],
+  "floors": {
+   "A": "fp64",
+   "alpha": "fp64",
+   "beta": "fp64",
+   "d": "fp64",
+   "p": "fp64",
+   "q": "fp64",
+   "r": "fp64",
+   "rho": "fp64",
+   "rho0": "fp64",
+   "z": "fp64"
+  },
+  "bit_reduction": 0.0,
+  "total_probes": 20
+ }
+]

@@ -108,7 +108,11 @@ class NumpyEvaluator:
         self.probes += 1
         start = time.perf_counter()
         try:
-            outputs = self._run(Precision(config, default=FP64))
+            # Overflow and division by zero are expected outcomes at low
+            # precision, detected below via the error metric, so they are not
+            # warned about here.
+            with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+                outputs = self._run(Precision(config, default=FP64))
         except (FloatingPointError, ZeroDivisionError, OverflowError) as exc:
             return Result(dict(config), float("inf"), False,
                           meta={"exception": type(exc).__name__})
