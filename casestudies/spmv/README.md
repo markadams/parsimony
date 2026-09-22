@@ -44,9 +44,40 @@ index per nonzero caps it at 1.5×, and thin rows do worse still (1.36× at a
 7-point stencil). This is worth stating plainly because the format width invites
 the opposite assumption.
 
-Blocking lifts the cap. For a matrix shaped like PETSc's
-`snes/tutorials/ex56` — 3D linear elasticity on trilinear hexahedra, `bs = 3`,
-27 blocks per block row — the model gives:
+### The ex56 stencil, measured rather than assumed
+
+The block size and stencil were taken from real runs of `snes/tutorials/ex56`
+(3D linear elasticity, `-run_type 1`, `-ksp_view_mat ::ascii_info`), not guessed.
+PETSc reports `bs=3`, and on a d³ grid of interior nodes the block count follows
+a closed form that reproduces every measured run exactly:
+
+| element | blocks | d | measured blocks/row | closed form |
+|---|---|---|---|---|
+| Q1 | (3d−2)³ | 7 | 20.0 | 20.0 |
+| Q1 | | 11 | 22.4 | 22.4 |
+| Q2 | (4d−5)³ | 15 | 49.3 | 49.3 |
+| Q2 | | 23 | 54.1 | 54.1 |
+
+So blocks per block row → **27 for Q1** and **64 for Q2** as the mesh refines,
+and scalar nnz/row → 81 and 192.
+
+Usefully, the bandwidth conclusion barely depends on which of these you pick:
+
+| stencil | AIJ fp32 | BAIJ fp32 | AIJ fp16 | BAIJ fp16 | BAIJ fp32 vs AIJ fp64 |
+|---|---|---|---|---|---|
+| Q1, d=11 (22.4) | 1.48× | 1.85× | 1.95× | 3.22× | 2.62× |
+| Q1 asymptotic (27) | 1.49× | 1.86× | 1.96× | 3.26× | 2.63× |
+| Q2, d=23 (54.1) | 1.49× | 1.88× | 1.98× | 3.35× | 2.66× |
+| Q2 asymptotic (64) | 1.49× | 1.88× | 1.98× | 3.37× | 2.67× |
+
+Once `bs = 3` the index term is already small, so the result is robust to getting
+the stencil wrong — which is worth knowing, since the stencil is the parameter a
+reader is most likely to dispute.
+
+### The table, at Q1
+
+For a matrix shaped like `ex56` at Q1 — `bs = 3`, 27 blocks per block row — the
+model gives:
 
 | | AIJ bytes/block-row | BAIJ bytes/block-row | AIJ gain | BAIJ gain |
 |---|---|---|---|---|

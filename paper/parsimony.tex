@@ -171,16 +171,24 @@ only as rows grow fat. At a seven-point stencil the realized figures are
 $1.36\times$ and $1.67\times$.
 
 Blocking changes this materially. At $b=3$ the index costs $4/9$ of a byte per
-scalar nonzero and the bound rises to $1.90\times$ and $3.45\times$. For a matrix
-shaped like PETSc's \texttt{snes/tutorials/ex56} --- 3D linear elasticity on
-trilinear hexahedra, three unknowns per node, twenty-seven blocks per block row
---- the byte model gives $1.85\times$ and $3.24\times$ in \texttt{BAIJ} against
-$1.48\times$ and $1.96\times$ for the identical matrix stored as \texttt{AIJ}.
-Blocking alone, before any precision change, already moves $1.41\times$ less;
-\texttt{BAIJ} at \texttt{fp32} moves $2.62\times$ less than \texttt{AIJ} at
-\texttt{fp64}. Narrowing the \emph{vector} rather than the matrix buys under
-$7\%$ in either layout, its traffic being $O(n)$ against the matrix's
-$O(\mathrm{nnz})$.
+scalar nonzero and the bound rises to $1.90\times$ and $3.45\times$. We take the
+block size and stencil from PETSc's \texttt{snes/tutorials/ex56}, 3D linear
+elasticity on hexahedra, by measurement rather than assumption: PETSc reports
+$b = 3$, and on a $d^3$ grid of interior nodes the assembled block count is
+$(3d-2)^3$ for trilinear elements and $(4d-5)^3$ for triquadratic ones, closed
+forms that reproduce every measured run exactly. Blocks per block row therefore
+tend to $27$ and $64$ respectively.
+
+At the trilinear stencil the byte model gives $1.85\times$ and $3.24\times$ in
+\texttt{BAIJ} against $1.48\times$ and $1.96\times$ for the identical matrix
+stored as \texttt{AIJ}. Blocking alone, before any precision change, already
+moves $1.41\times$ less; \texttt{BAIJ} at \texttt{fp32} moves $2.62\times$ less
+than \texttt{AIJ} at \texttt{fp64}. The conclusion is insensitive to the stencil:
+across both element orders and every mesh measured, \texttt{BAIJ} \texttt{fp32}
+stays within $2.62$--$2.67\times$ of \texttt{AIJ} \texttt{fp64}, because at
+$b = 3$ the index term is already small. Narrowing the \emph{vector} rather than
+the matrix buys under $7\%$ in either layout, its traffic being $O(n)$ against
+the matrix's $O(\mathrm{nnz})$.
 
 Two things follow, and both bound the performance claims in this paper. First,
 reduced precision and blocking are complementary rather than alternative ways to
