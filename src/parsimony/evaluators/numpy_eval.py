@@ -21,7 +21,7 @@ faster?".  The latter needs an evaluator with `caps.measures_time`.
 from __future__ import annotations
 
 import time
-from typing import Callable, Mapping
+from typing import Callable, Mapping, Sequence
 
 import numpy as np
 
@@ -55,24 +55,46 @@ class NumpyEvaluator:
 
     def __init__(
         self,
-        kernel: Callable[[Precision], Mapping[str, object]],
+        kernel: Callable[..., Mapping[str, object]],
         goal: Goal | None = None,
         ladder: tuple[Format, ...] = DEFAULT_LADDER,
+        cases: Sequence[object] | None = None,
     ):
+        """`cases`, when given, are passed to the kernel one at a time as a second
+        argument, and the tolerance must hold for *every* case.
+
+        Use more than one.  With a single input, the search can satisfy a
+        tolerance by coarsening an output until it quantizes onto a lattice point
+        that happens to sit near the reference -- a downstream format absorbing
+        upstream error rather than the computation being accurate.  Several
+        inputs remove that accident, since no one grid point is lucky for all of
+        them.  Precimonious notes the need for representative inputs and treats
+        generating them as orthogonal; it is not optional.
+        """
         self.kernel = kernel
         self.goal = goal or Goal()
         self.ladder = ladder
+        self.cases = None if cases is None else list(cases)
         self.caps = Caps(formats=ladder, needs_rebuild=False, sees_gpu=False,
                          measures_time=False, slowdown=1.0)
         self.probes = 0
         self._reference: dict[str, np.ndarray] | None = None
         self._space: ConfigSpace | None = None
 
+    def _run(self, recorder: Precision) -> dict[str, object]:
+        if self.cases is None:
+            return dict(self.kernel(recorder))
+        outputs: dict[str, object] = {}
+        for i, case in enumerate(self.cases):
+            for name, value in self.kernel(recorder, case).items():
+                outputs[f"case{i}.{name}"] = value
+        return outputs
+
     def discover(self) -> ConfigSpace:
         """One reference run at fp64, recording the variables the kernel touches."""
         if self._space is None:
             rec = Precision({}, default=FP64)
-            outputs = self.kernel(rec)
+            outputs = self._run(rec)
             self._reference = {k: np.asarray(v, dtype=np.float64)
                                for k, v in outputs.items()}
             self._space = ConfigSpace(variables=list(rec.seen), ladder=self.ladder)
@@ -86,7 +108,7 @@ class NumpyEvaluator:
         self.probes += 1
         start = time.perf_counter()
         try:
-            outputs = self.kernel(Precision(config, default=FP64))
+            outputs = self._run(Precision(config, default=FP64))
         except (FloatingPointError, ZeroDivisionError, OverflowError) as exc:
             return Result(dict(config), float("inf"), False,
                           meta={"exception": type(exc).__name__})

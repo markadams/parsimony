@@ -17,6 +17,7 @@ from .formats import (
 )
 from .evaluators.numpy_eval import NumpyEvaluator, Precision
 from .searches.ddmin import PrecisionDDMin, ddmin
+from .searches.prefilter import SoloSensitivity
 from .searches.uniform import UniformBisect
 from .types import Caps, Config, ConfigSpace, Goal, Result, summarize, total_bits, uniform
 
@@ -27,7 +28,7 @@ __all__ = [
     "DEFAULT_LADDER", "virtual", "round_to",
     "Caps", "Goal", "Result", "ConfigSpace", "Config",
     "NumpyEvaluator", "Precision",
-    "PrecisionDDMin", "ddmin", "UniformBisect",
+    "PrecisionDDMin", "ddmin", "UniformBisect", "SoloSensitivity",
     "tune", "TuneReport",
 ]
 
@@ -41,12 +42,21 @@ class TuneReport:
     uniform_probes: int
     mixed: dict[str, str]
     mixed_counts: dict[str, int]
-    mixed_probes: int
+    search_probes: int
+    prefilter_probes: int
     mixed_error: float
     variables: int
     bits_before: int
     bits_after: int
+    space_before: int = 0
+    space_after: int = 0
     trace: list[tuple[str, int, int]] = field(default_factory=list)
+    floors: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def total_probes(self) -> int:
+        """Every evaluation the tuning run cost, prefilter included."""
+        return self.prefilter_probes + self.search_probes
 
     @property
     def bit_reduction(self) -> float:
@@ -55,6 +65,7 @@ class TuneReport:
     def to_dict(self) -> dict:
         d = self.__dict__.copy()
         d["bit_reduction"] = round(self.bit_reduction, 4)
+        d["total_probes"] = self.total_probes
         return d
 
 
@@ -62,19 +73,28 @@ def tune(
     kernel: Callable[[Precision], Mapping[str, object]],
     tol: float = 1e-6,
     ladder: tuple[Format, ...] = DEFAULT_LADDER,
+    prefilter: bool = True,
+    cases: object | None = None,
 ) -> TuneReport:
     """Tune `kernel` to the lowest precision meeting a relative-error tolerance.
 
-    Runs the uniform baseline first, then the ddmin mixed-precision search, and
-    reports both -- the gap between them is the only honest measure of whether
-    the expensive search bought anything.
+    Runs the uniform baseline, optionally the solo-sensitivity prefilter, then
+    the ddmin mixed-precision search.  Both comparisons are reported because both
+    matter: the gap between the uniform floor and the mixed configuration says
+    whether the expensive search bought anything, and `prefilter=False` says what
+    the prefilter saved.
     """
-    ev = NumpyEvaluator(kernel, Goal(rel_tol=tol), ladder)
+    ev = NumpyEvaluator(kernel, Goal(rel_tol=tol), ladder, cases=cases)
     space = ev.discover()
+    space_before = space.size()
 
     bisect = UniformBisect(ladder)
     bisect.search(space, ev.evaluate)
     floor = bisect.floor()
+
+    pre = SoloSensitivity(ladder) if prefilter else None
+    if pre is not None:
+        space = pre.analyze(space, ev.evaluate)
 
     search = PrecisionDDMin(ladder)
     mixed = search.search(space, ev.evaluate)
@@ -86,10 +106,14 @@ def tune(
         uniform_probes=bisect.probes,
         mixed={v: f.name for v, f in sorted(mixed.items())},
         mixed_counts=summarize(mixed),
-        mixed_probes=search.probes,
+        search_probes=search.probes,
+        prefilter_probes=pre.probes if pre else 0,
         mixed_error=final.error,
         variables=len(space.variables),
         bits_before=total_bits(uniform(space, ladder[0])),
         bits_after=total_bits(mixed),
+        space_before=space_before,
+        space_after=space.size(),
         trace=search.trace,
+        floors=pre.report() if pre else {},
     )

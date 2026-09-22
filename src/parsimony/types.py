@@ -19,7 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, Mapping, Protocol
 
-from .formats import DEFAULT_LADDER, Format
+from .formats import DEFAULT_LADDER, Format, rank as _rank
 
 __all__ = ["Caps", "Goal", "ConfigSpace", "Result", "Evaluator", "Search", "Config"]
 
@@ -58,14 +58,32 @@ class Goal:
 
 @dataclass
 class ConfigSpace:
-    """The variables available for tuning and the formats each may take."""
+    """The variables available for tuning and the formats each may take.
+
+    `floors` narrows the space per variable: a prefilter that has established a
+    variable cannot go below some format records it here, and searches skip the
+    rungs below it rather than rediscovering the fact.
+    """
 
     variables: list[str]
     ladder: tuple[Format, ...] = DEFAULT_LADDER
     pinned: dict[str, Format] = field(default_factory=dict)
+    floors: dict[str, Format] = field(default_factory=dict)
 
     def candidates(self) -> list[str]:
         return [v for v in self.variables if v not in self.pinned]
+
+    def may_take(self, variable: str, fmt: Format) -> bool:
+        """Is `fmt` at or above the floor established for `variable`?"""
+        floor = self.floors.get(variable)
+        return floor is None or _rank(fmt) >= _rank(floor)
+
+    def size(self) -> int:
+        """Number of configurations the space still admits."""
+        total = 1
+        for v in self.candidates():
+            total *= sum(1 for f in self.ladder if self.may_take(v, f))
+        return total
 
 
 @dataclass

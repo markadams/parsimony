@@ -112,7 +112,8 @@ class PrecisionDDMin:
 
         for target in ladder[1:]:
             candidates = [v for v in space.candidates()
-                          if rank(config[v]) > rank(target)]
+                          if rank(config[v]) > rank(target)
+                          and space.may_take(v, target)]
             if not candidates:
                 continue
 

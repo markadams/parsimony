@@ -51,8 +51,11 @@ def _text(report: TuneReport) -> str:
         f"variables      {report.variables}",
         f"tolerance      {report.tolerance:g}",
         f"uniform floor  {report.uniform_floor or 'none'}  ({report.uniform_probes} probes)",
-        f"mixed          {report.mixed_counts}  ({report.mixed_probes} probes)",
+        f"mixed          {report.mixed_counts}",
         f"mixed error    {report.mixed_error:.3e}",
+        f"probes         {report.prefilter_probes} prefilter + {report.search_probes}"
+        f" search = {report.total_probes}",
+        f"space          {report.space_before:.3g} -> {report.space_after:.3g} configs",
         f"storage        {report.bits_before} -> {report.bits_after} bits"
         f"  ({report.bit_reduction:.1%} smaller)",
     ]

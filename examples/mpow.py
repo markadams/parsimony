@@ -14,6 +14,15 @@ from __future__ import annotations
 
 A = 1.84089642
 
+#: Several inputs, because one is not enough.  At a = 1.84089642 the result is
+#: within 2.3e-8 of exactly 0.5, which an 8-bit format represents exactly -- so a
+#: search given only this input can meet a loose tolerance by coarsening `res`
+#: until it quantizes onto that lattice point, with a downstream format absorbing
+#: upstream error rather than the computation being accurate.  These inputs
+#: spread the result over three orders of magnitude, so no single grid point is
+#: lucky for all of them.
+CASES = (1.84089642, 1.2, 2.5, 0.6, 3.7)
+
 
 def _mpow(P, a, factor, n):
     """res = factor * a**n, accumulated one multiply at a time."""
@@ -23,8 +32,8 @@ def _mpow(P, a, factor, n):
     return res
 
 
-def kernel(P):
-    a = P("a", A)
+def kernel(P, a_value=A):
+    a = P("a", a_value)
     t1 = P("t1", 4.0 * a)
     t2 = P("t2", _mpow(P, a, P("mpow.factor", 6.0), 2))
     t3 = P("t3", _mpow(P, a, P("mpow.factor", 4.0), 3))
