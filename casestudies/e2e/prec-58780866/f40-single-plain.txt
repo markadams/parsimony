@@ -1,0 +1,10 @@
+[2026-09-23T05:26:46.068] error: *** STEP 58780866.6 ON nid002457 CANCELLED AT 2026-09-23T05:26:46 DUE TO TIME LIMIT ***
+[0]PETSC ERROR: ------------------------------------------------------------------------
+[0]PETSC ERROR: Caught signal number 15 Terminate: Some process (or the batch system) has told this process to end
+[0]PETSC ERROR: Try option -start_in_debugger or -on_error_attach_debugger
+[0]PETSC ERROR: or see https://petsc.org/release/faq/#valgrind and https://petsc.org/release/faq/
+[0]PETSC ERROR: or try https://docs.nvidia.com/compute-sanitizer/ComputeSanitizer/index.html on NVIDIA CUDA systems to find memory corruption errors
+[0]PETSC ERROR: configure using --with-debugging=yes, recompile, link, and run 
+[0]PETSC ERROR: to get more information on the crash.
+MPICH ERROR [Rank 0] [job id 58780866.6] [Tue Sep 22 22:26:46 2026] [nid002457] - Abort(59) (rank 0 in comm 0): application called MPI_Abort(MPI_COMM_WORLD, 59) - process 0
+

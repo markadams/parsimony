@@ -793,6 +793,66 @@ iteration at $1.33\times$ the iterations --- a net $1.73\times$, slightly
 could have reached that conclusion alone, and a search minimizing modeled time
 would have had to be told the storage layout to find it.
 
+\subsection{End to end on a production solver}
+\label{sec:e2e}
+
+Extracted kernels and emulated arithmetic are not a solver. We close the loop on
+PETSc's \texttt{ex56k}, 3D linear elasticity with GPU-resident Kokkos finite
+element assembly, comparing complete \texttt{--with-precision=single} and
+\texttt{double} builds on one A100 at $750\,000$ and $1.48$ million degrees of
+freedom. This uses a development fork: upstream PETSc has neither BAIJ-Kokkos nor
+the Kokkos FE template path, so the blocked and device-assembly arms are not
+reproducible against a release.
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+& \multicolumn{2}{c}{assembly (ms)} & \multicolumn{2}{c}{solve (ms)} & \\
+dof & fp64 & fp32 & fp64 & fp32 & iterations\\
+\midrule
+750\,k & 296.8 & \textbf{191.8} & 275.5 & \textbf{217.8} & $31 \to 31$\\
+1.48\,M & 578.4 & \textbf{376.3} & 525.3 & \textbf{405.1} & $32 \to 32$\\
+\midrule
+speedup & \multicolumn{2}{c}{$1.55\times$, $1.54\times$} & \multicolumn{2}{c}{$1.26\times$, $1.30\times$} & ---\\
+\bottomrule
+\end{tabular}
+\caption{Complete single- and double-precision PETSc builds, scalar
+(\texttt{aijkokkos}) operator, steady-state solve stage. Converged displacements
+agree to five or six digits.}
+\label{tab:e2e}
+\end{table}
+
+Three things in Table~\ref{tab:e2e}. First, the iteration count is \emph{exactly}
+unchanged --- by precision, by storage layout, and by whether the Jacobian was
+assembled on the host or the device --- with displacements agreeing to five or
+six digits. The Bratu prediction of \S\ref{sec:petsc} holds on a production
+elasticity solver.
+
+Second, and this is the result the extracted kernels could not have produced,
+\textbf{the larger gain is in assembly, not the solve}. Finite element assembly
+is compute-bound, quadrature and tensor contraction, where the sparse
+matrix-vector product is bandwidth-bound; \texttt{fp32} cuts both the arithmetic
+and the traffic and returns a steady $1.54$--$1.55\times$, against
+$1.26$--$1.30\times$ for the solve. The solve figure is what the byte model of
+\S\ref{sec:intro} predicts for a scalar layout, which is a useful consistency
+check on the model; the assembly figure is outside the model entirely. Composing
+the tiers at $1.48$M degrees of freedom: zero extra iterations, $1.54\times$ on
+assembly, $1.30\times$ on the solve, about $1.4\times$ overall for the same
+answer.
+
+Third, a caution. The blocked operator, which the byte model and the standalone
+kernel of \S\ref{sec:intro} both favour, is \emph{slower} here: its
+\texttt{MatMult} runs $1.49\times$ slower than the scalar one in \texttt{fp64}
+and $2.39\times$ slower in \texttt{fp32}, and going from \texttt{fp64} to
+\texttt{fp32} makes it $0.81\times$ --- slower, not faster. The operator type,
+the call counts, the hierarchy and the converged answer are all identical to the
+scalar run, so this is an implementation property of that library's blocked
+device kernel rather than a fact about precision. We report it because it is the
+sharpest illustration available of this paper's own thesis: the payoff of a
+precision decision is a property of the code that executes it, and a tuning tool
+that reports ``\texttt{fp32} suffices'' predicts nothing about time on its own.
+
 \section{Limitations and Future Work}
 \label{sec:limitations}
 
@@ -934,11 +994,19 @@ what a precision-tuning tool cannot do on its own: the same recommendation is
 worth $2.86\times$ or $1.07\times$ depending on a storage decision outside its
 model, which is why we factorize the objective rather than search on it.
 
-\pending{One measurement would complete the argument: the end-to-end check at the
-uniform-\texttt{fp32} point, where PETSc can be built with
-\texttt{-{}-with-precision=single} and a full solve timed, confirming that
-iterations $\times$ cost per iteration predicts wall time on a real solver rather
-than on an extracted kernel. The single-precision build exists; the run does not.}
+The end-to-end check closes it (\S\ref{sec:e2e}): complete single- and
+double-precision builds of a production elasticity solver, same iteration counts,
+same answer, about $1.4\times$ faster. And it adds the finding we would not have
+reached from kernels alone --- that the larger share of that gain is in finite
+element assembly, which is compute-bound, rather than in the bandwidth-bound
+solve everyone reaches for first.
+
+What remains open is not a measurement but a scope. Every result here concerns
+\emph{storage} precision, on a CPU-emulated model for the search tiers and on two
+uniformly-built libraries for the end-to-end check. Mixed-precision arithmetic
+within a kernel, a per-variable assignment compiled into a real solver rather
+than a uniform build, and the blocked device kernel's anomalous behaviour in
+\texttt{fp32} are each a separate piece of work.
 
 \section*{Availability}
 

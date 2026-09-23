@@ -1,0 +1,32 @@
+NVIDIA A100-SXM4-40GB, 40960 MiB
+@@@ f32-double-gpu-scalar  dof=750141
+  Max displacement: 59.9589
+      Linear solve converged due to CONVERGED_RTOL iterations 31
+@@@ f32-double-gpu-block  dof=750141
+  Max displacement: 59.9589
+      Linear solve converged due to CONVERGED_RTOL iterations 31
+@@@ f32-double-cpu  dof=750141
+  Max displacement: 59.9589
+      Linear solve converged due to CONVERGED_RTOL iterations 31
+@@@ f32-single-gpu-scalar  dof=750141
+  Max displacement: 59.9581
+      Linear solve converged due to CONVERGED_RTOL iterations 31
+@@@ f32-single-gpu-block  dof=750141
+  Max displacement: 59.9581
+      Linear solve converged due to CONVERGED_RTOL iterations 31
+@@@ f32-single-cpu  dof=750141
+  Max displacement: 59.958
+      Linear solve converged due to CONVERGED_RTOL iterations 31
+@@@ f40-double-gpu-scalar  dof=1479117
+  Max displacement: 59.9541
+      Linear solve converged due to CONVERGED_RTOL iterations 32
+@@@ f40-double-gpu-block  dof=1479117
+  Max displacement: 59.9541
+      Linear solve converged due to CONVERGED_RTOL iterations 32
+@@@ f40-single-gpu-scalar  dof=1479117
+  Max displacement: 59.9558
+      Linear solve converged due to CONVERGED_RTOL iterations 32
+@@@ f40-single-gpu-block  dof=1479117
+  Max displacement: 59.9558
+      Linear solve converged due to CONVERGED_RTOL iterations 32
+@@@ done
