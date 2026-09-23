@@ -35,61 +35,30 @@
 \maketitle
 
 \begin{abstract}
-The method for automated floating-point precision tuning was settled over a
-decade ago. Precimonious~\cite{precimonious} searched type configurations with delta
-debugging; Blame Analysis~\cite{blame} made the search tractable by pruning it
-with a single shadow execution. Both are unmaintained, and we argue the reason is not
-that the methods failed but that the hardware of the time did not reward
-them: in the Blame Analysis evaluation, four of ten benchmark programs show
-exactly $0.0\%$ speedup at every error threshold tested, and a fifth never
-exceeds $0.4\%$. Converting \texttt{double} to \texttt{float} on a 2013 CPU
-bought a little vectorization and cache residency, partly cancelled by the
-conversion instructions it introduced, and the tools frequently reported that
-the original program was
-fastest.
-
-The objective function has since changed. The formats now include
-\texttt{bfloat16} and two 8-bit encodings, and the kernels that matter are
-bandwidth-bound, so narrowing a matrix's storage cuts memory traffic --- though
-by less than the
-format width suggests, for reasons we quantify, and not at all in some cases we
-measure. Tensor cores, the usual motivation for mixed precision, play no part
-here: they need dense tiles far larger than a small sparse block, and our kernels
-issue no matrix instructions. We present
-\emph{parsimony}, a precision-tuning framework that separates the two concerns
-prior tools fused --- how a precision configuration is \emph{evaluated}, and how
-the configuration space is \emph{searched} --- and reimplements the delta-debugging
-search against modern formats. We validate the emulation against hardware and the
-search against a synthetic oracle, and reproduce a published Blame Analysis result
-at a finer granularity than the original tool could express.
-
-On a conjugate-gradient solver the answer is structured rather than uniform: the
-scalars that steer the iteration ($\alpha$, $\beta$, $\rho$) tolerate
-\texttt{bfloat16} and below, while the operator and the state vectors set the
-achievable accuracy, with \texttt{fp32} operator storage sufficient at
-$10^{-6}$ --- the decision that matters most for a bandwidth-bound solver. We
-contribute a prefilter establishing per-variable floors in $O(n \log L)$
-evaluations, which cuts the search by $6$--$15\times$ for at most $8\%$ more
-storage, and we report three experimental-design failures encountered in
-producing these numbers, each of which yields a plausible but meaningless result.
-For Newton's method we argue that the right observable is iteration count at
-fixed residual tolerance, since a stored Jacobian cannot change the fixed point,
-and measure that \texttt{fp32} Jacobian storage costs no iterations, \texttt{fp16}
-costs a third more, and below about 10 bits Newton degrades to Picard iteration
-rather than diverging. The same residual may be stored in 16 bits but not
-evaluated in fewer than 33 --- storage precision and arithmetic precision are
-different questions, and a solver that evaluates its residual in low precision
-reports false convergence as fast convergence.
-Measuring the payoff on an A100 sharpens rather than confirms our own thesis.
-Storing the operator in \texttt{fp32} costs no iterations and, in a blocked
-layout, runs each sparse matrix-vector product $2.86\times$ faster than the scalar
-\texttt{fp64} a solver is likely using --- but on a scalar seven-point stencil
-the same precision change yields a $1.07\times$ speedup, which is the 2013
-result reproduced
-on 2026 hardware. The payoff comes from the blocked format at least as much as
-from the hardware, and a tool reporting ``\texttt{fp32} suffices'' has not
-predicted a speedup, because the same answer is worth a $2.86\times$ or a
-$1.07\times$ speedup depending on a storage decision the tool never sees.
+The method for search-based floating-point precision tuning was settled a decade
+ago by Precimonious~\cite{precimonious} and Blame Analysis~\cite{blame}, yet both
+tools are unmaintained. We argue the hardware of the time did not reward them: in
+the Blame Analysis evaluation, four of ten programs show exactly $0.0\%$ speedup
+at every error threshold, because converting \texttt{double} to \texttt{float} on
+a 2013 CPU bought almost nothing. The objective has since moved to
+\texttt{bfloat16} and 8-bit storage formats in bandwidth-bound kernels. We
+present \emph{parsimony}, a framework that separates how a precision
+configuration is evaluated from how the configuration space is searched,
+reimplements delta-debugging search over modern formats, and adds a prefilter
+that cuts the search $6$--$15\times$ for at most $8\%$ more storage. On
+conjugate gradient, the scalars that steer the iteration tolerate
+\texttt{bfloat16} and below while the operator and state vectors set the
+accuracy; \texttt{fp32} operator storage suffices at $10^{-6}$. For Newton's
+method the right observable is iteration count at fixed residual tolerance:
+\texttt{fp32} Jacobian storage costs no iterations, \texttt{fp16} costs a third
+more, and below about 10 bits Newton degrades to Picard iteration rather than
+diverging. The same residual may be stored in 16 bits but not evaluated in fewer
+than 33; storage precision and arithmetic precision are different questions. On
+an A100, blocked \texttt{fp32} storage runs the sparse matrix-vector product
+$2.86\times$ faster than scalar \texttt{fp64}, but on a scalar seven-point
+stencil the same change yields $1.07\times$, the 2013 result on 2026 hardware.
+A tool reporting ``\texttt{fp32} suffices'' has predicted no speedup: what the
+answer is worth depends on a storage decision the tool never sees.
 \end{abstract}
 
 \section{Introduction}
