@@ -35,21 +35,23 @@
 \maketitle
 
 \begin{abstract}
-Automated floating-point precision tuning was solved, in method, over a decade
-ago. Precimonious~\cite{precimonious} searched type configurations with delta
+The method for automated floating-point precision tuning was settled over a
+decade ago. Precimonious~\cite{precimonious} searched type configurations with delta
 debugging; Blame Analysis~\cite{blame} made the search tractable by pruning it
 with a single shadow execution. Both are unmaintained, and we argue the reason is not
 that the methods failed but that the hardware of the time did not reward
 them: in the Blame Analysis evaluation, four of ten benchmark programs show
 exactly $0.0\%$ speedup at every error threshold tested, and a fifth never
 exceeds $0.4\%$. Converting \texttt{double} to \texttt{float} on a 2013 CPU
-bought a little vectorization and cache residency, net of the casts it
-introduced, and the tools frequently reported that the original program was
+bought a little vectorization and cache residency, partly cancelled by the
+conversion instructions it introduced, and the tools frequently reported that
+the original program was
 fastest.
 
-The objective function has since changed. Reduced precision now addresses
-\texttt{bfloat16} and 8-bit storage formats and bandwidth-bound kernels, in which
-narrowing a matrix's storage cuts memory traffic --- though by less than the
+The objective function has since changed. The formats now include
+\texttt{bfloat16} and two 8-bit encodings, and the kernels that matter are
+bandwidth-bound, so narrowing a matrix's storage cuts memory traffic --- though
+by less than the
 format width suggests, for reasons we quantify, and not at all in some cases we
 measure. Tensor cores, the usual motivation for mixed precision, play no part
 here: they need dense tiles far larger than a small sparse block, and our kernels
@@ -146,7 +148,7 @@ produce a faster program and that a triage by the programmer is required.
 
 \subsection{Why this is now a different problem}
 
-Three changes since 2016 alter the arithmetic of that trade-off.
+Three changes since 2016 alter that trade-off.
 
 \paragraph{Formats below \texttt{float}.} The tuning lattice of the original
 tools was $\{\texttt{float}, \texttt{double}, \texttt{long double}\}$, with
@@ -184,9 +186,12 @@ sparse matrix-vector product moves
 \[
   r_b\,(b^2 w + 4) \;+\; 4 \;+\; b\,(v + 8) \quad\text{bytes per block row},
 \]
-for $r_b$ blocks per block row, value width $w$ and vector width $v$. Narrowing
-$w$ leaves three terms untouched: the column indices, the row pointer, and the
-vector read and write. Since a block carries one index for $b^2$ values, the
+for $r_b$ blocks per block row, value width $w$ and vector width $v$, both in
+bytes: each block carries a 4-byte column index, each block row a 4-byte row
+pointer, and the $b$ input-vector entries are read at width $v$ while the $b$
+output entries are written in \texttt{fp64}. Narrowing $w$ leaves three terms
+untouched: the column indices, the row pointer, and the vector read and write.
+Since a block carries one index for $b^2$ values, the
 index cost is $4/b^2$ bytes per scalar nonzero, and the factor by which traffic
 shrinks is bounded by
 \[
@@ -198,7 +203,7 @@ At $b=1$ --- scalar CSR, PETSc's \texttt{AIJ} --- this is $1.5\times$ for
 $4\times$: a 4-byte column index per nonzero caps it, and the bound is approached
 only asymptotically, as the number of nonzeros per row grows. At a seven-point
 stencil, with the row-pointer and vector terms included, the model gives
-$1.36\times$ and $1.67\times$.
+$1.37\times$ and $1.68\times$.
 
 Blocking raises the bound materially. At $b=3$ the index costs $4/9$ of a byte per
 scalar nonzero and the bound rises to $1.90\times$ and $3.45\times$. We take the
@@ -206,15 +211,16 @@ block size and stencil from PETSc's \texttt{snes/tutorials/ex56}, 3D linear
 elasticity on hexahedra, by measurement rather than assumption: PETSc reports
 $b = 3$, and on a $d^3$ grid of interior nodes the assembled block count is
 $(3d-2)^3$ for trilinear elements and $(4d-5)^3$ for triquadratic ones, closed
-forms that reproduce every measured run exactly. Blocks per block row therefore
-tend to $27$ and $64$ respectively.
+forms that reproduce every measured run exactly. As the mesh is refined, blocks
+per block row therefore tend to $27$ and $64$ respectively.
 
-At the trilinear stencil the byte model gives traffic reductions of
-$1.85\times$ (\texttt{fp32}) and $3.24\times$ (\texttt{fp16}) in \texttt{BAIJ},
-against $1.48\times$ and $1.96\times$ for the identical matrix stored as
-\texttt{AIJ}. Blocking alone, before any precision change, already cuts traffic
-by $1.41\times$, and \texttt{AIJ} at \texttt{fp64} moves $2.62\times$ the bytes
-of \texttt{BAIJ} at \texttt{fp32}. The conclusion is insensitive to the stencil:
+At the trilinear stencil, 27 blocks per block row, the byte model gives traffic
+reductions of $1.86\times$ (\texttt{fp32}) and $3.26\times$ (\texttt{fp16}) in
+\texttt{BAIJ}, against $1.49\times$ and $1.96\times$ for the identical matrix
+stored as \texttt{AIJ}. Blocking alone, before any precision change, already cuts
+traffic by $1.41\times$, and \texttt{AIJ} at \texttt{fp64} moves $2.63\times$
+the bytes of \texttt{BAIJ} at \texttt{fp32}. The conclusion is insensitive to
+the stencil:
 across both element orders and every mesh measured, that ratio stays within
 $2.62$--$2.67\times$, because at $b = 3$ the index term is already small.
 Narrowing the \emph{vector} rather than
@@ -246,18 +252,19 @@ $1.41\times$) and blocked \texttt{fp32} gives $2.86\times$ (model $2.63\times$).
 \label{tab:spmv}
 \end{table}
 
-Table~\ref{tab:spmv} is the measurement, on one A100. Three things in it bound
-every performance claim in this paper.
+Table~\ref{tab:spmv} is the measurement, on one A100. One caveat governs the
+whole table, and three observations in it bound every performance claim in this
+paper.
 
-One caveat governs the whole table, and \S\ref{sec:e2e} makes it concrete. These
+The caveat, which \S\ref{sec:e2e} makes concrete: these
 are two kernels we wrote, differing only in layout, so the comparison isolates
 the layout cleanly --- but it does not predict what a production library will do
 with the same two layouts. PETSc's blocked device kernel takes $1.49\times$
 the time of its scalar one on a single A100, where our blocked kernel is
-$1.64\times$ \emph{faster} than our scalar one, because its scalar path is more
-heavily tuned and because the
-blocked format's index saving is only realized once there is halo communication
-to amortize it against~\cite{baijkokkos}. Table~\ref{tab:spmv} measures what blocking
+$1.64\times$ \emph{faster} than our scalar one, because PETSc's scalar path is
+more heavily tuned and because the blocked format's smaller index traffic pays
+off only at multi-GPU scale~\cite{baijkokkos}. Table~\ref{tab:spmv} measures
+what blocking
 is worth in bytes and in one kernel; it does not measure what any particular
 implementation extracts from it.
 
@@ -275,8 +282,8 @@ $1.37\times$, which is to say nothing. That is the same ``do not bother'' the
 Blame Analysis
 evaluation reported, on 2026 hardware: at seven nonzeros per row the kernel is
 latency-bound rather than bandwidth-bound, and narrowing the values removes
-traffic the kernel was not waiting on. This sharpens the thesis of
-\S\ref{sec:intro} rather than confirming it. It
+traffic the kernel was not waiting on. This sharpens the paper's thesis rather
+than confirming it. It
 is not simply that the hardware changed. On the scalar formats the original tools
 targeted, reduced precision still buys almost nothing on a thin stencil; what
 unlocks the payoff is the blocked format, a data-structure choice.
@@ -296,11 +303,10 @@ than alternative ways to cut traffic, and the combination is worth more than
 either alone. And a precision-tuning tool that reports ``\texttt{fp32} suffices''
 has not thereby predicted a speedup: on this evidence the same answer is worth a
 $2.86\times$ or a $1.07\times$ speedup depending on a storage decision the tool
-never sees. That gap is a concrete instance of the dual objective the original
-tools tried to
-optimize directly, and an argument for the factorization of
-\S\ref{sec:observable}, in which precision search and cost measurement are kept
-apart.
+never sees. That gap is why the original tools' dual objective --- accuracy and
+speed optimized together --- is hard to search on directly, and an argument for
+the factorization of \S\ref{sec:observable}, in which precision search and cost
+measurement are kept apart.
 
 \subsection{Contributions}
 
@@ -396,7 +402,8 @@ decision rather than an algorithmic one.
 
 Prior tools bind their search strategy to their measurement technology.
 Precimonious' delta debugging is inseparable from its LLVM~3.0 instrumentation;
-PROMISE's search is inseparable from CADNA. The consequence is that neither
+PROMISE's search is inseparable from CADNA, the stochastic-arithmetic library
+it validates with. The consequence is that neither
 survives its dependency, and that a search improvement cannot be evaluated
 against a different error model.
 
@@ -416,7 +423,8 @@ class Search(Protocol):
 An \texttt{Evaluator} answers what a configuration costs in accuracy, and
 optionally in time; a \texttt{Search} decides which configurations to ask about.
 \texttt{Caps} declares what an evaluator can observe --- which formats, whether it
-requires a rebuild, whether it sees GPU code, its slowdown --- so that a request no
+requires a rebuild, whether it sees GPU code, its runtime overhead --- so that a
+request no
 installed evaluator can serve fails explicitly rather than being silently served
 by something weaker.
 
@@ -446,7 +454,7 @@ below it; wider formats require a native or instrumented evaluator.
 \subsection{Search}
 \label{sec:search}
 
-The delta-debugging adaptation requires one observation to state correctly.
+Adapting delta debugging to precision search requires one observation.
 Delta debugging minimizes a subset subject to a predicate that holds on the full
 set. Here the subset is the set of variables \emph{retained at higher precision},
 and the predicate is that the accuracy goal is met. That predicate is monotone in
@@ -510,7 +518,8 @@ inputs in the subnormal range, and \texttt{bfloat16} is verified to retain
 
 The delta-debugging implementation is tested against a predicate that holds
 exactly when a known subset is present. The search recovers that subset exactly,
-its output is verified 1-minimal, and the evaluation count is bounded well below
+its output is verified 1-minimal (no single variable can be removed from it),
+and the evaluation count is bounded well below
 exhaustive enumeration. No floating-point emulation participates in these tests.
 
 \subsection{Reproducing a published result}
@@ -530,7 +539,7 @@ the ladder extends below \texttt{float}, the result is sharper than the original
 tool could express --- \texttt{factor} holds $6$, $4$ and $1$, so it descends to an
 8-bit format with \emph{zero} error.
 
-The emulator also reproduces the paper's all-single figure, $0.4999980927$,
+The emulator also reproduces the paper's all-\texttt{float} result, $0.4999980927$,
 bit-for-bit against a native \texttt{float32} evaluation
 ($0.4999980926513672$).
 
@@ -629,7 +638,8 @@ search satisfies a $10^{-4}$ tolerance by coarsening the \emph{output} until it
 quantizes onto that lattice point --- a downstream format absorbing upstream error,
 rather than an accurate computation. This is also the concrete counterexample to
 the monotonicity argument of \S\ref{sec:prefilter}: the input variable $a$ alone
-at 8 bits fails, yet a configuration with $a$ at 8 bits passes. Evaluating over
+at 8 bits fails, yet a configuration with both $a$ and the output at 8 bits
+passes. Evaluating over
 several inputs removes the accident and restores monotonicity in tolerance.
 Precimonious notes the need for representative inputs and treats their generation
 as orthogonal; these results suggest it is not optional.
@@ -676,11 +686,11 @@ $\approx \eta$. An error-based criterion would therefore report that the Jacobia
 needs zero bits --- true, and useless.
 
 The observable is cost at fixed accuracy: hold the residual tolerance fixed, as a
-solver does anyway, and count iterations. This inverts the Precimonious framing.
-It also generalizes: every quantity in an iterative method that is not the
-residual or the solution --- a preconditioner, a search direction, a step --- is a
-fixed operator that changes the iteration count and cannot change the fixed
-point. Quantities divide into \emph{rate-limiting} and \emph{accuracy-limiting},
+solver does anyway, and count iterations. The observable generalizes: every
+quantity in an iterative method that is not the residual or the solution --- a
+preconditioner, a search direction, a step --- can change the iteration count
+but cannot change the fixed point. Quantities divide into \emph{rate-limiting}
+and \emph{accuracy-limiting},
 and one criterion catches both: converged to tolerance within an iteration
 budget. Rate-limiting cost appears as extra iterations; accuracy-limiting failure
 appears as non-convergence.
@@ -689,9 +699,10 @@ appears as non-convergence.
 
 We solve the Bratu problem $-\Delta u - \lambda e^u = 0$ on the unit square with
 a five-point stencil and Newton with a direct linear solve --- PETSc's SNES
-\texttt{ex5}~\cite{petsc} in its simplest form --- over three cases spanning a
-decade in conditioning: $(k,\lambda) = (16,1)$, $(16,6)$, $(24,6)$ with
-$\kappa(J) = 123, 265, 575$ at the solution. Variables are the stored Jacobian
+\texttt{ex5}~\cite{petsc} in its simplest form --- over three cases, $(k,\lambda)
+= (16,1)$, $(16,6)$, $(24,6)$ for $k$ interior grid points per side, with
+$\kappa(J) = 123, 265, 575$ at the solution. The residual tolerance is
+$\mathrm{rtol} = 10^{-10}$ throughout. Variables are the stored Jacobian
 $J$, step $\delta$, residual $F$ and iterate $u$; a second configuration rounds
 the two terms of $F$ separately \emph{before} they are subtracted, so the
 cancellation in $-\Delta u - \lambda e^u$ is modeled. Convergence is judged by an
@@ -699,9 +710,11 @@ independent \texttt{fp64} residual of the returned iterate, for a reason given
 below.
 
 The predictions were written down before running anything. $J$ and $\delta$ are
-rate-limiting with knee near $\log_2 \kappa + 3 \approx 10$--$12$ bits. The
-stored $F$ perturbs the right-hand side relatively, giving $\eta \approx u_p$
-with \emph{no} $\kappa$: nearly free. The stored $u$ caps attainable accuracy at
+rate-limiting, with a knee --- the precision below which the iteration count
+starts to rise --- near $\log_2 \kappa + 3 \approx 10$--$12$ bits. The stored $F$
+is a relative perturbation of the right-hand side, giving $\eta \approx u_p$
+with \emph{no} factor of $\kappa$: nearly free. The stored $u$ caps attainable
+accuracy at
 $u_p\kappa$, so it needs $\log_2\kappa + \log_2(1/\mathrm{rtol}) \approx 40$--$42$
 bits and the threshold should \emph{move with $\kappa$}. The residual terms
 before cancellation have a floor $\approx u_p$ relative to the terms' magnitude,
@@ -746,9 +759,10 @@ stored Jacobian degenerates to the discrete Laplacian $L$, and Newton's update
 $u \leftarrow u - L^{-1}(Lu - \lambda e^u) = L^{-1}\lambda e^u$ \emph{is} Picard
 iteration. Picard converges for $\lambda$ below the turning point
 $\lambda^* \approx 6.81$ at a rate set by $\lambda/\lambda^*$, which is why the
-low-precision floor is 8 iterations at $\lambda=1$ and 39 at $\lambda=6$
-regardless of grid; pure Picard reproduces the floors exactly (8, 39, 39 against
-8, 39, 40). So the answer to the section's question is: about 10 bits for this
+iteration count at very low precision plateaus at 8 for $\lambda=1$ and 39 for
+$\lambda=6$ regardless of grid; pure Picard iteration reproduces those plateaus
+(8, 39, 39 against 8, 39, 40 for the three cases). So the answer to the
+section's question is: about 10 bits for this
 problem, and below that one pays Picard's rate rather than failing. The knee is
 where the smallest physically meaningful term in a row is resolved against the
 largest --- $\log_2$ of the row's dynamic range --- which is the diagnostic to
@@ -810,7 +824,8 @@ row: the residual may be \emph{stored} in 16 bits while its terms may not be
 \emph{evaluated} in fewer than 33, and the real-format ladder has nothing between
 \texttt{fp32}'s 24 and \texttt{fp64}'s 53. A tool that models storage precision
 must not be read as answering an arithmetic-precision question; this is the
-concrete demonstration of the scope statement in \S\ref{sec:limitations}.
+concrete instance of the ``storage, not arithmetic'' limitation in
+\S\ref{sec:limitations}.
 
 At the three budgets, the prefilter reduces 72, 80 and 55 evaluations to 13, 18
 and 14, for 0--5\% more storage.
@@ -890,9 +905,10 @@ Third, the blocked operator is \emph{slower} here, and the reason is instructive
 rather than anomalous. Its \texttt{MatMult} takes $1.49\times$ the time of the
 scalar one in \texttt{fp64}. That is the expected single-GPU behaviour, not a
 defect: Adams~\cite{baijkokkos} measures the same deficit on the same library and
-explains it. The blocked format's advantage is compressed column indices, so it
-is realized only when there is halo communication to amortize the index traffic
-against; on one GPU the tuned scalar kernel wins. That work reports the blocked
+explains it. The blocked format's advantage is compressed column indices, which
+matter most where rows are short and index traffic dominates: the off-process
+part of a distributed matrix. On one GPU there is no such part, and the tuned
+scalar kernel wins. That work reports the blocked
 kernel
 taking $1.44\times$ (Q1) and $1.62\times$ (Q2) the time of the scalar one on one
 GPU, and running $1.42\times$ \emph{faster} than it on 27 GPUs. Our $1.49\times$
@@ -1060,8 +1076,9 @@ reported. On the data structures the original tools targeted, their conclusion
 still holds.
 
 What changed is therefore not only the hardware but the format. Reduced precision
-pays when the index traffic it cannot reduce has already been amortized by
-blocking, and elasticity, multi-species transport and any other multi-component
+pays when blocking has already shrunk the index traffic that narrowing the
+values cannot touch, and elasticity, multi-species transport and any other
+multi-component
 physics amortize it by construction. That is a narrower claim than the one we
 started with and a more useful one, because it says where to look. It also says
 what a precision-tuning tool cannot do on its own: the same recommendation is
@@ -1091,7 +1108,8 @@ unedited \texttt{-log\_view} output, so every figure quoted here can be traced t
 the run that produced it.
 
 The end-to-end measurements of \S\ref{sec:e2e} use a PETSc development fork
-rather than a release: upstream PETSc has neither the BAIJ-Kokkos matrix type nor
+rather than a release: upstream PETSc has neither the \texttt{baijkokkos} matrix
+type nor
 the Kokkos finite-element template path, so the blocked and device-assembly arms
 cannot be reproduced against a released version. The model problem is
 \texttt{src/snes/tutorials/ex56k}. Measurements were taken on NVIDIA A100 GPUs at
