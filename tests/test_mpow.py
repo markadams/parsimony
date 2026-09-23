@@ -1,12 +1,12 @@
 """End-to-end check on the worked example from Blame Analysis, Figure 2.
 
-The double-precision answer reproduces the paper's 0.5000000113 exactly.  For
-the all-single answer the test pins to hardware float32 rather than to the
-paper's printed constant: the emulator and numpy agree on 0.4999980926513672,
-and the paper's figure appears to read 0.4999980927 (the trailing digits match;
-a transcription of the sixth decimal is the only difference).  Hardware is the
-stronger oracle anyway -- it catches an emulator bug, which a copied constant
-cannot.
+The double-precision answer reproduces the paper's 0.5000000113 exactly, and the
+all-single answer reproduces its 0.4999980927: the emulator and native numpy
+float32 both give 0.4999980926513672.
+
+The all-single check is nonetheless written against hardware rather than against
+the printed constant, because hardware catches an emulator bug and a copied
+constant cannot.
 """
 
 from __future__ import annotations

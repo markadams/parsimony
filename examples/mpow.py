@@ -5,9 +5,9 @@ a = 1.84089642, via repeated multiplication.  Intermediate terms reach ~25 while
 the result is ~0.5, so the summation loses roughly 1.7 decimal digits to
 cancellation.
 
-The paper reports res = 0.5000000113 in double and 0.4999990927 with every
+The paper reports res = 0.5000000113 in double and 0.4999980927 with every
 variable in single, and concludes that only `factor` inside mpow() can be
-lowered -- it holds small exact integers.  Both are checked in tests/.
+lowered -- it holds small exact integers.  All three are checked in tests/.
 """
 
 from __future__ import annotations

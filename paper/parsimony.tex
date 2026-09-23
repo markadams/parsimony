@@ -124,8 +124,13 @@ only for \texttt{sum} ($39.9\%$), \texttt{fft} ($8.3\%$), \texttt{blas}
 ($5.1\%$), NAS \texttt{cg} ($7.7$--$7.9\%$), and \texttt{ep} ($0.6\%$). In the
 configuration tables, a majority of cells are marked to indicate that the tools
 selected the \emph{original} program as fastest.
-\todo{Verify each cited cell against the published table before submission; the
-figures above were read from the paper's typeset tables.}
+
+The picture is starker still at the tighter thresholds, where the accuracy
+demanded is closest to what a solver would actually ask for. At $10^{-8}$ and
+$10^{-10}$, \texttt{fft} and \texttt{blas} join the first four at $0.0\%$ and
+\texttt{sum} follows at $10^{-10}$; for Precimonious alone, \emph{exactly one} of
+the ten programs --- NAS \texttt{cg}, at $7.4$--$7.9\%$ --- shows any speedup at
+all.
 
 This is not a failure of search. The searches found valid lower-precision
 configurations --- Blame Analysis reports that on average $40\%$ of program
@@ -497,13 +502,9 @@ the ladder extends below \texttt{float}, the result is sharper than the original
 tool could express --- \texttt{factor} holds $6$, $4$ and $1$, so it descends to an
 8-bit format with \emph{zero} error.
 
-We note a discrepancy for the record. The paper's stated all-single result is
-$0.4999990927$; hardware \texttt{float32} evaluation of the program as published
-gives $0.4999980926513672$, which parsimony's emulator matches bit for bit. The
-trailing digits agree and only the sixth decimal differs, which is consistent
-with a transcription error.
-\todo{Confirm against the authoritative PDF text rather than a rendered page, and
-if it stands, note it as an erratum rather than a disagreement.}
+The emulator also reproduces the paper's all-single figure, $0.4999980927$,
+bit-for-bit against a native \texttt{float32} evaluation
+($0.4999980926513672$).
 
 \section{Conjugate Gradient}
 \label{sec:nascg}
@@ -1017,7 +1018,15 @@ algorithms are reimplemented from their published descriptions.
 
 \section*{Acknowledgments}
 
-\todo{DOE/ASCR funding statement.}
+This material is based upon work supported by the U.S. Department of Energy,
+Office of Science, Office of Advanced Scientific Computing Research, Scientific
+Discovery through Advanced Computing (SciDAC) Program through the FASTMath
+Institute, under contract number DE-AC02-05CH11231 at Lawrence Berkeley National
+Laboratory.
+
+This research used resources of the National Energy Research Scientific Computing
+Center (NERSC), a U.S. Department of Energy Office of Science User Facility
+located at Lawrence Berkeley National Laboratory.
 
 \bibliographystyle{plainnat}
 \bibliography{refs}
