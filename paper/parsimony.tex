@@ -240,6 +240,17 @@ $2.86\times$ (model $2.63\times$).}
 Table~\ref{tab:spmv} is the measurement, on one A100. Three things in it bound
 every performance claim in this paper.
 
+One caveat governs the whole table, and \S\ref{sec:e2e} makes it concrete. These
+are two kernels we wrote, differing only in layout, so the comparison isolates
+the layout cleanly --- but it does not predict what a production library will do
+with the same two layouts. PETSc's blocked device kernel is $1.49\times$
+\emph{slower} than its scalar one on a single A100, the opposite sign to our
+$1.64\times$, because its scalar path is more heavily tuned and because the
+blocked format's index saving is only realized once there is halo communication
+to amortize it against~\cite{baijkokkos}. The tables below measure what blocking
+is worth in bytes; they do not measure what any particular implementation
+extracts from it.
+
 \emph{Blocked \texttt{fp32} is the real win, and it beats the model.} It realizes
 $87\%$ of its predicted gain, and against scalar \texttt{fp64} --- what a PETSc
 user has today --- it delivers $2.86\times$ where the byte model predicted
@@ -842,17 +853,39 @@ the tiers at $1.48$M degrees of freedom: zero extra iterations, $1.54\times$ on
 assembly, $1.30\times$ on the solve, about $1.4\times$ overall for the same
 answer.
 
-Third, a caution. The blocked operator, which the byte model and the standalone
-kernel of \S\ref{sec:intro} both favour, is \emph{slower} here: its
-\texttt{MatMult} runs $1.49\times$ slower than the scalar one in \texttt{fp64}
-and $2.39\times$ slower in \texttt{fp32}, and going from \texttt{fp64} to
-\texttt{fp32} makes it $0.81\times$ --- slower, not faster. The operator type,
-the call counts, the hierarchy and the converged answer are all identical to the
-scalar run, so this is an implementation property of that library's blocked
-device kernel rather than a fact about precision. We report it because it is the
-sharpest illustration available of this paper's own thesis: the payoff of a
-precision decision is a property of the code that executes it, and a tuning tool
-that reports ``\texttt{fp32} suffices'' predicts nothing about time on its own.
+Third, the blocked operator is \emph{slower} here, and the reason is instructive
+rather than anomalous. Its \texttt{MatMult} runs $1.49\times$ slower than the
+scalar one in \texttt{fp64}. That is the expected single-GPU behaviour, not a
+defect: Adams~\cite{baijkokkos} measures the same deficit on the same library and
+explains it. The blocked format's advantage is compressed column indices, so it
+is realized only when there is halo communication to amortize the index traffic
+against; on one GPU the tuned scalar kernel wins. That work reports block/scalar
+\texttt{SpMV} ratios of $1.44\times$ (Q1) and $1.62\times$ (Q2) slower at one
+GPU, against $1.42\times$ \emph{faster} at 27 GPUs. Our $1.49\times$ at Q2 on one
+GPU sits squarely in that range, and our byte accounting agrees with theirs to
+the digit ($1.41\times$ against $1.42\times$ for the \texttt{fp64}
+traffic-bound ceiling). Single-GPU measurements of a blocked format therefore say
+nothing about it at scale, which is worth stating because the temptation to
+generalize from one device is strong.
+
+What does not follow from that work, because it measures only \texttt{fp64}, is
+the precision behaviour: going from \texttt{fp64} to \texttt{fp32} makes the
+blocked kernel $0.81\times$ --- slower --- while the scalar kernel gets
+$1.30\times$ faster. The byte model predicts the opposite. At \texttt{fp64} the
+index is 4 of the 12 bytes per scalar nonzero and blocking saves $30\%$; at
+\texttt{fp32} the values shrink to 4 bytes, the index share rises, and blocking
+should save $45\%$, raising the blocked ceiling from $1.42\times$ to
+$1.80\times$. That the measurement moves the other way says the blocked kernel
+has left the bandwidth-bound regime at four-byte values --- the same transition
+\S\ref{sec:intro} found for \texttt{fp16} in the standalone kernel, arriving one
+format earlier because blocking has already removed most of the traffic.
+
+We report this because it is the sharpest illustration available of this paper's
+own thesis. The payoff of a precision decision is a property of the code and the
+machine configuration that execute it: the same \texttt{fp32} recommendation is
+worth $1.30\times$, nothing, or a slowdown depending on the storage format, the
+GPU count, and whether the kernel is still bandwidth-bound. A tuning tool
+reporting ``\texttt{fp32} suffices'' predicts none of that.
 
 \section{Limitations and Future Work}
 \label{sec:limitations}

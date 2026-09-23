@@ -163,6 +163,16 @@ model gives:
 | fp32 | 2004 | 1132 | 1.48× | **1.85×** |
 | fp16 | 1518 | 589 | 1.96× | **3.24×** |
 
+> **These are two kernels written here, differing only in layout.** That isolates
+> the layout cleanly but does **not** predict what a production library extracts
+> from it. PETSc's blocked device kernel is 1.49× *slower* than its scalar one on
+> a single A100 — the opposite sign to the 1.64× below — because its scalar path
+> is more heavily tuned and because the blocked index saving is only realized once
+> there is halo communication to amortize it against. See
+> [`../e2e`](../e2e) and Adams, *A Natively Blocked, Device-Resident Algebraic
+> Multigrid GPU Path in PETSc*, whose Table 4 reports the same single-GPU deficit
+> (1.44× Q1, 1.62× Q2) and 1.42× the other way at 27 GPUs.
+
 - Blocking alone, at fp64: **1.41×** less traffic than AIJ.
 - BAIJ at fp32 against AIJ at fp64: **2.62×** less traffic.
 - Narrowing only the *vector*: 1.06×, since its traffic is O(n) not O(nnz).

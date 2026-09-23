@@ -58,10 +58,7 @@ Composing the tiers on the scalar arm at 1.48M dof: fp32 costs 0 iterations and
 buys 1.54× on assembly and 1.30× on the solve, for **~1.4× overall at the same
 answer**.
 
-### The block layout is slower, and fp32 makes it worse
-
-This contradicts both the byte model and the microbenchmark, so it is stated
-plainly rather than buried.
+### The block layout is slower here — which is the expected single-GPU result
 
 | MatMult, per call | double | single | double→single |
 |---|---|---|---|
@@ -69,24 +66,43 @@ plainly rather than buried.
 | `seqbaijkokkos` | 815 µs | 1004 µs | **0.81× — slower** |
 
 At 750k dof the block MatMult is 1.49× slower than scalar in double and 2.39×
-slower in single; achieved rate goes 190→248 GFlop/s for scalar (improving) and
-128→104 for block (degrading).
+slower in single.
 
-The byte model says block should move ~29% *fewer* bytes at `bs=3`, and the
-standalone Kokkos kernel in [`../spmv`](../spmv) measured block 1.64× *faster*
-than scalar. PETSc's `SEQBAIJKOKKOS` MatMult does the opposite on both counts.
+**The fp64 deficit is not an anomaly and not a regression.** Adams, *A Natively
+Blocked, Device-Resident Algebraic Multigrid GPU Path in PETSc*, measures the
+same thing on the same library and explains it: the blocked format's advantage is
+compressed column indices, so it is realized only when there is halo
+communication to amortize index traffic against. On one GPU the tuned scalar
+kernel wins. That paper's Table 4, at one GPU, gives block÷scalar SpMV ratios of
+1.44× (Q1, 76 nnz/row) and **1.62× (Q2, 169 nnz/row)** — and the deficit *grows*
+with nnz/row, because the block advantage is proportionally largest in the
+index-bound, low-nnz/row regime. Our 1.49× at Q2 on one GPU sits in that range.
+At 27 GPUs the same paper measures block **1.42× faster** on SpMV.
 
-Checked, and none of these explain it:
+The byte accounting also agrees to the digit: that paper counts 12.0 B per scalar
+nonzero for CSR against 8.44 B for BAIJ at `bs=3` with fp64 values and int32
+indices, for a traffic-bound ceiling of 1.42×; [`../spmv`](../spmv) derived
+1.41× independently.
 
-- The operator really is `seqbaijkokkos`, confirmed by `-ksp_view` (`type:
-  seqbaijkokkos`, `bs=3`) against `seqaijkokkos` for the scalar arm.
-- `MatConvert` appears only in the block run but costs 10 ms, against a 116 ms gap.
-- MatMult call counts are identical (433), the hierarchy is identical, and the
-  converged answer is identical, so this is not a different amount of work.
+**So a single-GPU measurement of a blocked format says nothing about it at
+scale.** Our `../spmv` microbenchmark measured block 1.64× *faster* on one A100,
+which now looks like a property of that hand-written kernel pair rather than a
+prediction for PETSc's.
 
-This looks like a real regression in the BAIJ-Kokkos MatMult, worst in single
-precision. It is a PETSc implementation matter rather than a finding about
-precision tuning, and it does not affect the scalar-arm conclusions above.
+**What is new here is the precision behaviour**, since that work measures only
+fp64. Going fp64→fp32 makes the blocked kernel 0.81× — slower — while the scalar
+kernel gets 1.30× faster. The byte model predicts the opposite: at fp64 the index
+is 4 of 12 bytes per scalar nonzero and blocking saves 30%; at fp32 values shrink
+to 4 bytes, the index share rises, and blocking should save 45%, lifting the
+blocked ceiling from 1.42× to 1.80×. The measurement moving the other way says
+the blocked kernel has left the bandwidth-bound regime at four-byte values — the
+same transition [`../spmv`](../spmv) found for fp16, arriving one format earlier
+because blocking has already removed most of the traffic.
+
+Ruled out as explanations: the operator really is `seqbaijkokkos` (`-ksp_view`,
+`bs=3`); `MatConvert` appears only in the block run but costs 10 ms against a
+116 ms gap; and MatMult call counts (433), hierarchy and converged answer are
+identical to the scalar run.
 
 ### GPU versus CPU assembly
 
