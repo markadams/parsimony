@@ -1042,24 +1042,53 @@ within a kernel, a per-variable assignment compiled into a real solver rather
 than a uniform build, and the blocked device kernel's anomalous behaviour in
 \texttt{fp32} are each a separate piece of work.
 
-\section*{Availability}
+\section*{Code and Data Availability}
 
-Source, tests and the case-study harnesses are at
-\url{https://github.com/markadams/parsimony}, BSD-3-Clause. No code from
-Precimonious (BSD-3-Clause, \copyright~2013 UC Berkeley) is reproduced; its
-algorithms are reimplemented from their published descriptions.
+The tool, its tests, and the harness and raw log files behind every table are at
+\url{https://github.com/markadams/parsimony}, BSD-3-Clause. Each case study
+directory holds the batch script that produced its numbers alongside the
+unedited \texttt{-log\_view} output, so every figure quoted here can be traced to
+the run that produced it.
 
-\section*{Acknowledgments}
+The end-to-end measurements of \S\ref{sec:e2e} use a PETSc development fork
+rather than a release: upstream PETSc has neither the BAIJ-Kokkos matrix type nor
+the Kokkos finite-element template path, so the blocked and device-assembly arms
+cannot be reproduced against a released version. The model problem is
+\texttt{src/snes/tutorials/ex56k}. Measurements were taken on NVIDIA A100 GPUs at
+NERSC.
 
-This material is based upon work supported by the U.S. Department of Energy,
+No code from Precimonious (BSD-3-Clause, \copyright~2013 UC Berkeley) is
+reproduced; its algorithms are reimplemented from their published descriptions.
+
+\section*{Use of AI}
+
+Anthropic's Claude models, operating agentically through Claude Code, were used
+under the author's direction for background research and exploration, analysis,
+code writing, debugging, and experiment scripting, and for drafting of the
+manuscript. The author made all design and experimental decisions, verified all
+results, and takes full responsibility for the content.
+
+Two episodes are worth recording, because they bear on how such tools should be
+used for measurement rather than on authorship. A per-event GPU profile was
+initially mis-attributed --- asynchronous kernel launches credited the
+synchronizing reduction with the sparse matrix-vector product's time --- and was
+caught only because the implied bandwidth, half a percent of the device peak, was
+impossible; the affected numbers were discarded and remeasured with forced
+per-event synchronization. Separately, a single-GPU blocked-format deficit was
+initially reported here as an implementation defect before being identified as
+the documented and expected behaviour at that scale~\cite{baijkokkos}. Both
+corrections came from checking a number against a physical bound or against prior
+work, not from the tooling.
+
+\section*{Acknowledgment}
+
+This material is based upon work supported by the U.S.\ Department of Energy,
 Office of Science, Office of Advanced Scientific Computing Research, Scientific
 Discovery through Advanced Computing (SciDAC) Program through the FASTMath
 Institute, under contract number DE-AC02-05CH11231 at Lawrence Berkeley National
-Laboratory.
-
-This research used resources of the National Energy Research Scientific Computing
-Center (NERSC), a U.S. Department of Energy Office of Science User Facility
-located at Lawrence Berkeley National Laboratory.
+Laboratory. This research used resources of the National Energy Research
+Scientific Computing Center (NERSC), a U.S.\ Department of Energy Office of
+Science user facility located at Lawrence Berkeley National Laboratory.
 
 \bibliographystyle{plainnat}
 \bibliography{refs}

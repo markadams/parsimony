@@ -160,6 +160,45 @@ python -m venv .venv && .venv/bin/pip install -e ".[dev]"
 .venv/bin/pytest
 ```
 
+## Paper
+
+`paper/parsimony.tex` — *Parsimony: Revisiting Search-Based Floating-Point
+Precision Tuning for Reduced-Precision Hardware*. Build with `make` in `paper/`
+(pdflatex + bibtex).
+
+## Data availability
+
+Every number in the paper traces to a run in this repository. Each case study
+directory holds the batch script that produced its results next to the unedited
+`-log_view` output:
+
+| directory | what it measures | raw data |
+|---|---|---|
+| [`casestudies/nas_cg`](casestudies/nas_cg) | CG precision assignment | `results.json` |
+| [`casestudies/newton`](casestudies/newton) | Bratu Newton, per-variable bit sweep | `sweep.json`, `search.json` |
+| [`casestudies/spmv`](casestudies/spmv) | A100 SpMV by storage format | `results-a100.txt` |
+| [`casestudies/e2e`](casestudies/e2e) | end-to-end PETSc elasticity solve | `ex56k-*/`, `scale-*/` |
+
+The end-to-end measurements use a PETSc development fork, not a release: upstream
+PETSc has neither the BAIJ-Kokkos matrix type nor the Kokkos FE template path, so
+the blocked and device-assembly arms are not reproducible against a released
+version. Measurements were taken on NVIDIA A100 GPUs at NERSC.
+
+## Use of AI
+
+Anthropic's Claude models, operating agentically through Claude Code, were used
+under the author's direction for background research and exploration, analysis,
+code writing, debugging, and experiment scripting, and for drafting of the
+manuscript. The author made all design and experimental decisions, verified all
+results, and takes full responsibility for the content.
+
+Two corrections are recorded in the paper's *Use of AI* section because they bear
+on using such tools for measurement: a GPU profile mis-attributed by asynchronous
+kernel launches, caught because the implied bandwidth was physically impossible;
+and a single-GPU blocked-format deficit first reported as a defect before being
+identified as documented, expected behaviour at that scale. Both were caught by
+checking a number against a physical bound or against prior work.
+
 ## License
 
 BSD-3-Clause.
