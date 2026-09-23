@@ -1,0 +1,35 @@
+NVIDIA A100-SXM4-40GB, 40960 MiB
+faces=24 degree=2
+@@@ double-scalar-jac
+      Linear solve converged due to CONVERGED_RTOL iterations 232
+      Linear solve converged due to CONVERGED_RTOL iterations 232
+  [0] 0) N=      311469, max displ=5.9679096e+01, error=7.466e-02
+@@@ double-block-jac
+      Linear solve converged due to CONVERGED_RTOL iterations 232
+      Linear solve converged due to CONVERGED_RTOL iterations 232
+  [0] 0) N=      311469, max displ=5.9679050e+01, error=7.471e-02
+@@@ double-scalar-gamg
+      Linear solve converged due to CONVERGED_RTOL iterations 23
+      Linear solve converged due to CONVERGED_RTOL iterations 23
+  [0] 0) N=      311469, max displ=5.9679070e+01, error=7.469e-02
+@@@ double-block-gamg
+      Linear solve converged due to CONVERGED_RTOL iterations 23
+      Linear solve converged due to CONVERGED_RTOL iterations 23
+  [0] 0) N=      311469, max displ=5.9679073e+01, error=7.469e-02
+@@@ single-scalar-jac
+      Linear solve converged due to CONVERGED_RTOL iterations 232
+      Linear solve converged due to CONVERGED_RTOL iterations 232
+  [0] 0) N=      311469, max displ=5.9679096e+01, error=7.466e-02
+@@@ single-block-jac
+      Linear solve converged due to CONVERGED_RTOL iterations 232
+      Linear solve converged due to CONVERGED_RTOL iterations 232
+  [0] 0) N=      311469, max displ=5.9679050e+01, error=7.471e-02
+@@@ single-scalar-gamg
+      Linear solve converged due to CONVERGED_RTOL iterations 23
+      Linear solve converged due to CONVERGED_RTOL iterations 23
+  [0] 0) N=      311469, max displ=5.9679077e+01, error=7.468e-02
+@@@ single-block-gamg
+      Linear solve converged due to CONVERGED_RTOL iterations 23
+      Linear solve converged due to CONVERGED_RTOL iterations 23
+  [0] 0) N=      311469, max displ=5.9679085e+01, error=7.468e-02
+@@@ done
