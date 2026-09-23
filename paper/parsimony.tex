@@ -38,8 +38,8 @@
 Automated floating-point precision tuning was solved, in method, over a decade
 ago. Precimonious~\cite{precimonious} searched type configurations with delta
 debugging; Blame Analysis~\cite{blame} made the search tractable by pruning it
-with a single shadow execution. Both are unmaintained. We argue this is not
-because the methods failed but because the hardware of the time did not reward
+with a single shadow execution. Both are unmaintained, and we argue the reason is not
+that the methods failed but that the hardware of the time did not reward
 them: in the Blame Analysis evaluation, four of ten benchmark programs show
 exactly $0.0\%$ speedup at every error threshold tested, and a fifth never
 exceeds $0.4\%$. Converting \texttt{double} to \texttt{float} on a 2013 CPU
@@ -80,13 +80,14 @@ different questions, and a solver that evaluates its residual in low precision
 reports false convergence as fast convergence.
 Measuring the payoff on an A100 sharpens rather than confirms our own thesis.
 Storing the operator in \texttt{fp32} costs no iterations and, in a blocked
-layout, $2.86\times$ less time per sparse matrix-vector product than the scalar
+layout, runs each sparse matrix-vector product $2.86\times$ faster than the scalar
 \texttt{fp64} a solver is likely using --- but on a scalar seven-point stencil
-the same precision change buys $1.07\times$, which is the 2013 result reproduced
+the same precision change yields a $1.07\times$ speedup, which is the 2013
+result reproduced
 on 2026 hardware. The payoff comes from the blocked format at least as much as
 from the hardware, and a tool reporting ``\texttt{fp32} suffices'' has not
-predicted a speedup, because the same answer is worth $2.86\times$ or
-$1.07\times$ depending on a storage decision the tool never sees.
+predicted a speedup, because the same answer is worth a $2.86\times$ or a
+$1.07\times$ speedup depending on a storage decision the tool never sees.
 \end{abstract}
 
 \section{Introduction}
@@ -109,8 +110,8 @@ the minimum operand precision that still yields the required result precision,
 and uses the result to prune Precimonious' search space --- $9\times$ faster
 analysis on average, up to $38\times$.
 
-Neither tool is maintained. The natural reading is that the approach did not pan
-out. We think the evidence supports a different reading, and it is visible in the
+Neither tool is maintained. The natural reading is that the approach failed. We
+think the evidence supports a different reading, and it is visible in the
 tools' own numbers.
 
 \subsection{The observation}
@@ -126,13 +127,14 @@ configuration tables, a majority of cells are marked to indicate that the tools
 selected the \emph{original} program as fastest.
 
 The picture is starker still at the tighter thresholds, where the accuracy
-demanded is closest to what a solver would actually ask for. At $10^{-8}$ and
+demanded is closest to what a production solver requires. At $10^{-8}$ and
 $10^{-10}$, \texttt{fft} and \texttt{blas} join the first four at $0.0\%$ and
 \texttt{sum} follows at $10^{-10}$; for Precimonious alone, \emph{exactly one} of
 the ten programs --- NAS \texttt{cg}, at $7.4$--$7.9\%$ --- shows any speedup at
 all.
 
-This is not a failure of search. The searches found valid lower-precision
+The zero speedups are not a failure of search. The searches found valid
+lower-precision
 configurations --- Blame Analysis reports that on average $40\%$ of program
 variables can be declared \texttt{float} (median $28\%$). It is a failure of
 \emph{payoff}. On a 2013 general-purpose CPU, both \texttt{float} and
@@ -154,19 +156,20 @@ expressible as storage. Hardware now provides \texttt{bfloat16}, \texttt{fp16},
 best move from 64 to 32 bits may now move to 8, and the search space is
 correspondingly richer.
 
-\paragraph{Throughput that actually differs by format.} Matrix units on current
+\paragraph{Throughput that now differs by format.} Matrix units on current
 accelerators deliver order-of-magnitude higher throughput at reduced precision,
-and this is what most often motivates mixed precision. It is worth saying plainly
+and that throughput is what most often motivates mixed precision. It is worth
+saying plainly
 that it is \emph{not} the mechanism at work in this paper. Tensor cores operate on
 dense tiles --- $16\times16\times16$ at smallest for the half-precision
-instruction --- so a $3\times3$ elasticity block fills nine of two hundred and
-fifty-six slots, and NVIDIA's own tensor-core sparse path requires block sizes of
+instruction --- so a $3\times3$ elasticity block fills nine of 256 slots, and
+NVIDIA's own tensor-core sparse path requires block sizes of
 16 or more for that reason. Our kernels use no matrix instructions at all;
 inspection of the generated assembly finds zero \texttt{HMMA} and only scalar
 \texttt{DFMA}. Reduced precision here is a \emph{storage} decision, and the
 payoff we measure is memory traffic, not arithmetic throughput. For small-block
-sparse solvers, that is the honest framing: the matrix units are unreachable, and
-the bandwidth is not.
+sparse solvers, that is the honest framing: the matrix units cannot be used at this
+block size, and the memory bandwidth can.
 
 \paragraph{Bandwidth-bound kernels.} Much of scientific computing --- sparse
 matrix-vector products above all --- is limited by memory traffic rather than by
@@ -174,7 +177,8 @@ arithmetic. For these, precision is a \emph{storage} decision whose payoff does
 not depend on what the arithmetic units do. This case barely existed in the
 original benchmark set, drawn from GSL routines and small NAS kernels.
 
-How much it saves depends on the sparse data structure, not only on the format,
+How much traffic a narrower value format saves depends on the sparse data
+structure, not only on the format,
 and the arithmetic is worth doing once. In block CSR with block size $b$, one
 sparse matrix-vector product moves
 \[
@@ -183,18 +187,20 @@ sparse matrix-vector product moves
 for $r_b$ blocks per block row, value width $w$ and vector width $v$. Narrowing
 $w$ leaves three terms untouched: the column indices, the row pointer, and the
 vector read and write. Since a block carries one index for $b^2$ values, the
-index cost is $4/b^2$ bytes per scalar nonzero, and the saving is bounded by
+index cost is $4/b^2$ bytes per scalar nonzero, and the factor by which traffic
+shrinks is bounded by
 \[
   \frac{8 + 4/b^2}{w + 4/b^2}.
 \]
 
 At $b=1$ --- scalar CSR, PETSc's \texttt{AIJ} --- this is $1.5\times$ for
 \texttt{fp32} and $2\times$ for \texttt{fp16}, \emph{not} $2\times$ and
-$4\times$: a 4-byte column index per nonzero caps it, and the bound is reached
-only as rows grow fat. At a seven-point stencil the realized figures are
+$4\times$: a 4-byte column index per nonzero caps it, and the bound is approached
+only asymptotically, as the number of nonzeros per row grows. At a seven-point
+stencil, with the row-pointer and vector terms included, the model gives
 $1.36\times$ and $1.67\times$.
 
-Blocking changes this materially. At $b=3$ the index costs $4/9$ of a byte per
+Blocking raises the bound materially. At $b=3$ the index costs $4/9$ of a byte per
 scalar nonzero and the bound rises to $1.90\times$ and $3.45\times$. We take the
 block size and stencil from PETSc's \texttt{snes/tutorials/ex56}, 3D linear
 elasticity on hexahedra, by measurement rather than assumption: PETSc reports
@@ -203,14 +209,15 @@ $(3d-2)^3$ for trilinear elements and $(4d-5)^3$ for triquadratic ones, closed
 forms that reproduce every measured run exactly. Blocks per block row therefore
 tend to $27$ and $64$ respectively.
 
-At the trilinear stencil the byte model gives $1.85\times$ and $3.24\times$ in
-\texttt{BAIJ} against $1.48\times$ and $1.96\times$ for the identical matrix
-stored as \texttt{AIJ}. Blocking alone, before any precision change, already
-moves $1.41\times$ less; \texttt{BAIJ} at \texttt{fp32} moves $2.62\times$ less
-than \texttt{AIJ} at \texttt{fp64}. The conclusion is insensitive to the stencil:
-across both element orders and every mesh measured, \texttt{BAIJ} \texttt{fp32}
-stays within $2.62$--$2.67\times$ of \texttt{AIJ} \texttt{fp64}, because at
-$b = 3$ the index term is already small. Narrowing the \emph{vector} rather than
+At the trilinear stencil the byte model gives traffic reductions of
+$1.85\times$ (\texttt{fp32}) and $3.24\times$ (\texttt{fp16}) in \texttt{BAIJ},
+against $1.48\times$ and $1.96\times$ for the identical matrix stored as
+\texttt{AIJ}. Blocking alone, before any precision change, already cuts traffic
+by $1.41\times$, and \texttt{AIJ} at \texttt{fp64} moves $2.62\times$ the bytes
+of \texttt{BAIJ} at \texttt{fp32}. The conclusion is insensitive to the stencil:
+across both element orders and every mesh measured, that ratio stays within
+$2.62$--$2.67\times$, because at $b = 3$ the index term is already small.
+Narrowing the \emph{vector} rather than
 the matrix buys under $7\%$ in either layout, its traffic being $O(n)$ against
 the matrix's $O(\mathrm{nnz})$.
 
@@ -230,10 +237,12 @@ layout & format & ms & GB/s & \% peak & measured & model & realized\\
 \end{tabular}
 \caption{One sparse matrix-vector product on an A100-SXM4-80GB (peak 2039 GB/s),
 for the \emph{same} elasticity matrix stored two ways: $b=3$ blocked, and
-expanded to scalar. ``Realized'' is the fraction of the byte model's predicted
-gain that appeared. Against the scalar \texttt{fp64} baseline, blocking alone
-gives $1.64\times$ (model $1.41\times$) and blocked \texttt{fp32} gives
-$2.86\times$ (model $2.63\times$).}
+expanded to scalar. ``Measured'' is the speedup over the \texttt{fp64} row of
+the same layout (ratio of times); ``model'' is the byte model's prediction of
+that speedup (ratio of bytes); ``realized'' is the fraction of the modeled gain
+that appeared, $(\text{measured}-1)/(\text{model}-1)$. Against the scalar
+\texttt{fp64} baseline, blocking alone gives a $1.64\times$ speedup (model
+$1.41\times$) and blocked \texttt{fp32} gives $2.86\times$ (model $2.63\times$).}
 \label{tab:spmv}
 \end{table}
 
@@ -243,34 +252,39 @@ every performance claim in this paper.
 One caveat governs the whole table, and \S\ref{sec:e2e} makes it concrete. These
 are two kernels we wrote, differing only in layout, so the comparison isolates
 the layout cleanly --- but it does not predict what a production library will do
-with the same two layouts. PETSc's blocked device kernel is $1.49\times$
-\emph{slower} than its scalar one on a single A100, the opposite sign to our
-$1.64\times$, because its scalar path is more heavily tuned and because the
+with the same two layouts. PETSc's blocked device kernel takes $1.49\times$
+the time of its scalar one on a single A100, where our blocked kernel is
+$1.64\times$ \emph{faster} than our scalar one, because its scalar path is more
+heavily tuned and because the
 blocked format's index saving is only realized once there is halo communication
-to amortize it against~\cite{baijkokkos}. The tables below measure what blocking
-is worth in bytes; they do not measure what any particular implementation
-extracts from it.
+to amortize it against~\cite{baijkokkos}. Table~\ref{tab:spmv} measures what blocking
+is worth in bytes and in one kernel; it does not measure what any particular
+implementation extracts from it.
 
 \emph{Blocked \texttt{fp32} is the real win, and it beats the model.} It realizes
 $87\%$ of its predicted gain, and against scalar \texttt{fp64} --- what a PETSc
-user has today --- it delivers $2.86\times$ where the byte model predicted
-$2.63\times$. Blocking over-delivers because it does not only move fewer bytes,
+user has today --- it delivers a $2.86\times$ speedup where the byte model
+predicted $2.63\times$. Blocking over-delivers because it does not only move
+fewer bytes,
 it moves them better: $77\%$ of peak bandwidth against $67\%$ for the scalar
 layout, from fewer and more regular loads.
 
 \emph{The 2013 result survives for scalar formats.} On a seven-point stencil,
-\texttt{fp32} buys $1.07\times$ --- $19\%$ of its predicted $1.37\times$, which
-is to say nothing. That is the same ``do not bother'' the Blame Analysis
+\texttt{fp32} yields a $1.07\times$ speedup --- $19\%$ of its predicted
+$1.37\times$, which is to say nothing. That is the same ``do not bother'' the
+Blame Analysis
 evaluation reported, on 2026 hardware: at seven nonzeros per row the kernel is
-latency-bound rather than bandwidth-bound, and narrowing the values does not
-help. This sharpens the thesis of \S\ref{sec:intro} rather than confirming it. It
+latency-bound rather than bandwidth-bound, and narrowing the values removes
+traffic the kernel was not waiting on. This sharpens the thesis of
+\S\ref{sec:intro} rather than confirming it. It
 is not simply that the hardware changed. On the scalar formats the original tools
 targeted, reduced precision still buys almost nothing on a thin stencil; what
 unlocks the payoff is the blocked format, a data-structure choice.
 
 \emph{\texttt{fp16} underdelivers everywhere}, realizing $58\%$ even blocked.
 Achieved bandwidth falls from 1573 to 1115 GB/s --- less data moved, but not
-proportionally faster --- so below about four-byte values the kernel has left the
+proportionally faster --- so at values narrower than four bytes the kernel has
+left the
 bandwidth-bound regime and per-element instruction cost dominates. Some of that
 may be our kernel rather than the hardware, and we do not claim this is the best
 achievable \texttt{fp16} figure; but the direction is unambiguous, and it makes
@@ -280,9 +294,10 @@ the format-width ratio an upper bound that \texttt{fp32} approaches and
 Two conclusions follow. Reduced precision and blocking are complementary rather
 than alternative ways to cut traffic, and the combination is worth more than
 either alone. And a precision-tuning tool that reports ``\texttt{fp32} suffices''
-has not thereby predicted a speedup: on this evidence the same answer is worth
-$2.86\times$ or $1.07\times$ depending on a storage decision the tool never sees.
-That is a concrete instance of the dual objective the original tools tried to
+has not thereby predicted a speedup: on this evidence the same answer is worth a
+$2.86\times$ or a $1.07\times$ speedup depending on a storage decision the tool
+never sees. That gap is a concrete instance of the dual objective the original
+tools tried to
 optimize directly, and an argument for the factorization of
 \S\ref{sec:observable}, in which precision search and cost measurement are kept
 apart.
@@ -345,7 +360,7 @@ than 50 variables with native runtimes under five seconds.
 
 Two practical constraints deserve note because they persist in any successor.
 First, the analysis is performed without optimization, because optimization
-eliminates the very variables the search ranges over --- so the configuration is
+eliminates the variables the search ranges over --- so the configuration is
 tuned on a program that differs from the one that ships. Second, the search is
 empirical: a configuration meeting $10^{-6}$ will satisfy $10^{-4}$, but the
 configuration found directly for $10^{-4}$ may differ, and may perform better.
@@ -469,13 +484,14 @@ meets the goal. That format becomes $v$'s floor; variables that cannot be lowere
 even on their own are removed from the search entirely. The cost is $O(n \log L)$
 evaluations for $n$ variables and $L$ rungs.
 
-This is a heuristic, not a bound, and the distinction is worth stating because
+The floor is a heuristic, not a bound, and the distinction is worth stating because
 the tempting argument is false. One would like to say: if $v$ at format $f$ fails
 with everything else at full precision, it cannot pass when other variables are
 lowered too. That assumes lowering a variable only \emph{adds} error. But
 rounding is a projection onto a lattice, so a coarse format downstream can
 \emph{absorb} upstream error, snapping a badly wrong value onto a grid point near
-the reference. We observed exactly this (\S\ref{sec:threats}). The prefilter may
+the reference. We observed exactly this absorption (\S\ref{sec:threats}). The
+prefilter may
 therefore exclude configurations that would have passed, and can return a wider
 assignment than an unfiltered search --- though in practice the excluded
 configurations are frequently the ones that pass by accident.
@@ -502,12 +518,13 @@ exhaustive enumeration. No floating-point emulation participates in these tests.
 
 The worked example of the Blame Analysis paper (its Figure~2) computes
 $a^4 - 4a^3 + 6a^2 - 4a + 1$ at $a = 1.84089642$ by repeated multiplication.
-Intermediate terms reach roughly $25$ while the result is near $0.5$, so the
+Intermediate terms have magnitude up to roughly $25$ while the result is near
+$0.5$, so the
 summation loses about $1.7$ decimal digits to cancellation. The paper concludes
 that only the variable \texttt{factor} inside \texttt{mpow} may be lowered,
 because it holds small exact integers.
 
-Parsimony reaches the same conclusion independently: at a relative tolerance of
+Parsimony selects the same variable independently: at a relative tolerance of
 $10^{-8}$, one of eleven variables is lowered, and it is \texttt{factor}. Because
 the ladder extends below \texttt{float}, the result is sharper than the original
 tool could express --- \texttt{factor} holds $6$, $4$ and $1$, so it descends to an
@@ -525,8 +542,8 @@ programs in the Blame Analysis study showing any speedup, which makes it the
 natural anchor. We tune a transcription of its inner loop, preserving the C
 variable names, over three variable-coefficient diffusion operators of increasing
 conditioning ($\kappa$ from $38$ to $211$). Iteration counts are calibrated per
-case to the number of iterations \texttt{fp64} needs to reach a relative residual
-of $10^{-12}$, then held fixed across all configurations so that iteration count
+case to the number of iterations \texttt{fp64} needs to reduce the relative residual
+below $10^{-12}$, then held fixed across all configurations so that iteration count
 is not a confounding variable. Two differences from the benchmark are worth
 stating: the operator is a diffusion stencil rather than NAS' random sparse
 matrix, and the tuned set is the algorithm's ten working-set quantities rather
@@ -545,17 +562,22 @@ $10^{-8}$  & 419 & fp64 & fp64 & fp64 & fp64 & fp32 & fp32 & tf32 & fp32 & fp16\
 $10^{-10}$ & 640 & fp64 & fp64 & fp64 & fp64 & fp64 & fp64 & fp64 & fp64 & fp64\\
 \bottomrule
 \end{tabular}
-\caption{Precision assignment for conjugate gradient, full search. Storage is
-monotone in tolerance, the basic consistency check on the search.}
+\caption{Precision assignment for conjugate gradient, full search, relative
+error against the \texttt{fp64} run. ``bits'' is the total storage width of the
+ten tuned quantities; the tenth, the denominator $d = p^{\mathsf{T}} q$, takes
+the same format as $p$ in every row and is omitted. ``fp8'' is
+\texttt{fp8e5m2}. Storage is monotone in tolerance, the basic consistency check
+on the search.}
 \label{tab:cg}
 \end{table}
 
 Table~\ref{tab:cg} shows a structured rather than uniform answer. The scalars
 that \emph{steer} the iteration --- the step length $\alpha$, the conjugacy
 coefficient $\beta$, and the residual norms $\rho, \rho_0$ --- sit at or below
-\texttt{bfloat16} wherever the vectors are at \texttt{fp32}, with $\alpha$ and
-$\beta$ reaching 8 bits at $10^{-4}$. The quantities that \emph{carry state} ---
-the operator and the vectors $r$, $z$, $q$ --- set the achievable accuracy. This is
+\texttt{bfloat16} wherever the vectors are at \texttt{fp32}, and $\alpha$ and
+$\beta$ are assigned 8 bits at $10^{-4}$. The quantities that \emph{carry state} ---
+the operator and the vectors $r$, $z$, $q$ --- set the achievable accuracy. This
+split is
 the conjugate-gradient form of a familiar fact: an inaccurate step length yields a
 slightly non-optimal step, which the next residual corrects, whereas error in the
 accumulated solution does not self-correct. The search direction $p$ sits
@@ -563,7 +585,8 @@ consistently below $r$ and $z$ for the same reason.
 
 The operator tracks the state vectors, at \texttt{fp32} for tolerances of
 $10^{-6}$ and looser. Since sparse matrix-vector products are bandwidth-bound,
-this is the storage decision with the largest performance consequence, and the
+the operator's format is the storage decision with the largest performance
+consequence, and the
 answer is not trivially full precision.
 
 Against the published result, agreement is partial. Expressed as the fraction of
@@ -575,8 +598,9 @@ the search, discussed in \S\ref{sec:criterion}.
 
 The prefilter cuts $214$, $229$, $306$ and $294$ evaluations to $35$, $36$, $27$
 and $20$ --- $6.1\times$ to $14.7\times$ --- while increasing storage by $7.7\%$,
-$1.3\%$, $6.9\%$ and $0\%$. This is comparable to the $9\times$ average Blame
-Analysis reported for its own prefilter, obtained without shadow execution.
+$1.3\%$, $6.9\%$ and $0\%$. This is comparable to the $9\times$ average that Blame
+Analysis reported for its own prefilter, and it is obtained here without shadow
+execution.
 
 \subsection{Threats to validity}
 \label{sec:threats}
@@ -587,7 +611,7 @@ yielded a plausible-looking result that was meaningless, and each is easy to mak
 \paragraph{An operator whose entries are exactly representable.} The first
 version used a constant-coefficient five-point Laplacian, with entries $4$ and
 $-1$. Both are exact in every format down to 8 bits, so $A$ came back at 8 bits
-at \emph{every} tolerance including $10^{-10}$. Read quickly this is a dramatic
+at \emph{every} tolerance including $10^{-10}$. Read quickly, this is a striking
 finding about matrix storage; it is in fact the observation that rounding a no-op
 changes nothing. Generic entries are required for the storage question to be
 meaningful at all.
@@ -613,7 +637,8 @@ as orthogonal; these results suggest it is not optional.
 \subsection{A limitation of the full-precision reference}
 \label{sec:criterion}
 
-At $10^{-10}$ every variable returns to \texttt{fp64}, and this persists after
+At $10^{-10}$ every variable returns to \texttt{fp64}, and the assignment
+persists after
 tightening the reference's own convergence to $7 \times 10^{-13}$, so it is not a
 convergence artifact. Reduced-precision CG does not converge to the same iterate
 as \texttt{fp64} CG; it converges to a nearby but different point. Requiring
@@ -709,11 +734,12 @@ Table~\ref{tab:bratu-thresholds} summarizes the single-variable sweep. Four of
 five predictions held as mechanisms, not merely as numbers: the $u$ threshold
 moves with $\kappa$ and the cancellation threshold does not, which is the
 difference between an accuracy floor proportional to $u_p\kappa$ and one
-proportional to $u_p$, and a single case could not have shown it. The fifth
-prediction was wrong in the most useful way.
+proportional to $u_p$. A single case could not have shown that difference. The
+fifth prediction was wrong in the most useful way.
 
 \paragraph{The Jacobian degrades to Picard iteration.} The bound
-$u_p\kappa \gtrsim 1$ predicts divergence below about 7 bits. It never happens.
+$u_p\kappa \gtrsim 1$ predicts divergence below about 7 bits. Divergence never
+occurs.
 At low precision the diagonal entry $4/h^2 - \lambda e^{u}$ rounds to $4/h^2$
 --- the nonlinear term falls below the ulp of the Laplacian's diagonal --- so the
 stored Jacobian degenerates to the discrete Laplacian $L$, and Newton's update
@@ -724,7 +750,7 @@ low-precision floor is 8 iterations at $\lambda=1$ and 39 at $\lambda=6$
 regardless of grid; pure Picard reproduces the floors exactly (8, 39, 39 against
 8, 39, 40). So the answer to the section's question is: about 10 bits for this
 problem, and below that one pays Picard's rate rather than failing. The knee is
-where the smallest physically significant term in a row is resolved against the
+where the smallest physically meaningful term in a row is resolved against the
 largest --- $\log_2$ of the row's dynamic range --- which is the diagnostic to
 carry to a stiff or multiphysics Jacobian.
 
@@ -733,10 +759,10 @@ cancellation, the solver's own stopping test fires spuriously: near the solution
 $\Delta_h u \approx \lambda e^u$, both terms round to the same representable
 value, the computed residual is exactly zero, and the solver declares victory.
 In the raw sweep this appeared as ``converged in one or two iterations'' at 4--8
-bits. A real solver has only its own residual to consult. This is why
-mixed-precision iterative refinement evaluates the residual in high
-precision~\cite{carsonhigham}, rediscovered here from the failure side, and it
-is now a rule the tool enforces: a kernel's convergence flag must come from an
+bits. A real solver has only its own residual to consult. Mixed-precision
+iterative refinement evaluates the residual in high precision for this
+reason~\cite{carsonhigham}; we rediscovered the rule from the failure side, and
+the tool now enforces it: a kernel's convergence flag must come from an
 independent high-precision residual.
 
 \begin{table}[t]
@@ -761,17 +787,20 @@ slack & $F$ & $F_{\exp}$ & $F_{\Delta}$\\
 \bottomrule
 \end{tabular}
 \caption{Pareto search over real storage formats under an iteration budget.
-Left: stored quantities, $F$ evaluated in \texttt{fp64} (256 bits at full
-precision). Right: the same search with the residual's terms rounded before
-cancellation; $J$, $\delta$, $u$ as at left.}
+``slack'' is the permitted fractional increase in iterations over the
+\texttt{fp64} run, ``iters/ref'' the iteration count observed as a multiple of
+the \texttt{fp64} count, and ``bits'' the total storage width of the four
+variables (256 at full precision). Left: stored quantities, with $F$ evaluated
+in \texttt{fp64}. Right: the same search with the residual's terms $F_{\exp}$
+and $F_{\Delta}$ rounded before cancellation; $J$, $\delta$, $u$ as at left.}
 \label{tab:bratu-pareto}
 \end{table}
 
 Table~\ref{tab:bratu-pareto} gives the mixed-precision search under an
 iteration budget. \textbf{Storing the Jacobian in \texttt{fp32} is free}: zero
-iteration cost. \texttt{fp16} storage costs a third more iterations. Nothing
-below \texttt{fp16} is reachable at any budget, for two different reasons worth
-separating: \texttt{fp8e4m3} overflows the stencil entries
+iteration cost. \texttt{fp16} storage costs a third more iterations. No format
+below \texttt{fp16} is feasible at any budget tested, for two different reasons
+worth separating: \texttt{fp8e4m3} overflows the stencil entries
 ($4/h^2 \approx 1156 > 448$), while \texttt{fp8e5m2}'s two significand bits put
 the solver on Picard's rate, eight times the iterations. The iterate $u$ is
 \texttt{fp64} at every budget, as an accuracy-limiting quantity must be.
@@ -783,26 +812,27 @@ row: the residual may be \emph{stored} in 16 bits while its terms may not be
 must not be read as answering an arithmetic-precision question; this is the
 concrete demonstration of the scope statement in \S\ref{sec:limitations}.
 
-The prefilter reduces 72, 80 and 55 evaluations to 13, 18 and 14, for 0--5\%
-more storage.
+At the three budgets, the prefilter reduces 72, 80 and 55 evaluations to 13, 18
+and 14, for 0--5\% more storage.
 
 \subsection{Putting the two tiers together}
 
 The design factorizes time as iterations $\times$ cost per iteration, and both
 factors are now measured. Storing the Jacobian in \texttt{fp32} costs no
-iterations (Table~\ref{tab:bratu-pareto}) and, in a blocked layout, buys
-$1.75\times$ per iteration against blocked \texttt{fp64}, or $2.86\times$ against
-the scalar \texttt{fp64} a solver is likely to be using
-(Table~\ref{tab:spmv}). Those multiply: the same accuracy, at a little over a
-third of the operator's memory traffic.
+iterations (Table~\ref{tab:bratu-pareto}) and, in a blocked layout, speeds each
+matrix-vector product up by $1.75\times$ against blocked \texttt{fp64}, or by
+$2.86\times$ against the scalar \texttt{fp64} a solver is likely to be using
+(Table~\ref{tab:spmv}). Those factors multiply: the same accuracy in a little
+over a third of the time per product.
 
 The composition also shows where the two tiers disagree, which is the useful
 part. Tier one says \texttt{fp16} Jacobian storage costs a third more iterations
 and is otherwise viable; tier two says \texttt{fp16} recovers only $58\%$ of its
-predicted bandwidth gain. Multiplying, blocked \texttt{fp16} is $2.30\times$ per
-iteration at $1.33\times$ the iterations --- a net $1.73\times$, slightly
-\emph{worse} than \texttt{fp32}'s $1.75\times$ at no iteration cost. Neither tier
-could have reached that conclusion alone, and a search minimizing modeled time
+predicted bandwidth gain. Multiplying, blocked \texttt{fp16} speeds each product
+up by
+$2.30\times$ but costs $1.33\times$ the iterations --- a net $1.73\times$,
+slightly \emph{worse} than \texttt{fp32}'s $1.75\times$ at no iteration cost.
+Neither tier alone supports that conclusion, and a search minimizing modeled time
 would have had to be told the storage layout to find it.
 
 \subsection{End to end on a production solver}
@@ -812,8 +842,10 @@ Extracted kernels and emulated arithmetic are not a solver. We close the loop on
 PETSc's \texttt{ex56k}, 3D linear elasticity with GPU-resident Kokkos finite
 element assembly, comparing complete \texttt{--with-precision=single} and
 \texttt{double} builds on one A100 at $750\,000$ and $1.48$ million degrees of
-freedom. This uses a development fork: upstream PETSc has neither BAIJ-Kokkos nor
-the Kokkos FE template path, so the blocked and device-assembly arms are not
+freedom. This uses a development fork: upstream PETSc has neither the
+\texttt{baijkokkos}
+matrix type nor the Kokkos finite-element template path, so the blocked and
+device-assembly arms are not
 reproducible against a release.
 
 \begin{table}[t]
@@ -830,8 +862,9 @@ speedup & \multicolumn{2}{c}{$1.55\times$, $1.54\times$} & \multicolumn{2}{c}{$1
 \bottomrule
 \end{tabular}
 \caption{Complete single- and double-precision PETSc builds, scalar
-(\texttt{aijkokkos}) operator, steady-state solve stage. Converged displacements
-agree to five or six digits.}
+(\texttt{aijkokkos}) operator, steady-state solve stage, one A100. Speedup is
+\texttt{fp64} time over \texttt{fp32} time, at 750\,k and 1.48\,M degrees of
+freedom respectively. Converged displacements agree to five or six digits.}
 \label{tab:e2e}
 \end{table}
 
@@ -843,7 +876,7 @@ elasticity solver.
 
 Second, and this is the result the extracted kernels could not have produced,
 \textbf{the larger gain is in assembly, not the solve}. Finite element assembly
-is compute-bound, quadrature and tensor contraction, where the sparse
+--- quadrature and tensor contraction --- is compute-bound, whereas the sparse
 matrix-vector product is bandwidth-bound; \texttt{fp32} cuts both the arithmetic
 and the traffic and returns a steady $1.54$--$1.55\times$, against
 $1.26$--$1.30\times$ for the solve. The solve figure is what the byte model of
@@ -854,28 +887,31 @@ assembly, $1.30\times$ on the solve, about $1.4\times$ overall for the same
 answer.
 
 Third, the blocked operator is \emph{slower} here, and the reason is instructive
-rather than anomalous. Its \texttt{MatMult} runs $1.49\times$ slower than the
+rather than anomalous. Its \texttt{MatMult} takes $1.49\times$ the time of the
 scalar one in \texttt{fp64}. That is the expected single-GPU behaviour, not a
 defect: Adams~\cite{baijkokkos} measures the same deficit on the same library and
 explains it. The blocked format's advantage is compressed column indices, so it
 is realized only when there is halo communication to amortize the index traffic
-against; on one GPU the tuned scalar kernel wins. That work reports block/scalar
-\texttt{SpMV} ratios of $1.44\times$ (Q1) and $1.62\times$ (Q2) slower at one
-GPU, against $1.42\times$ \emph{faster} at 27 GPUs. Our $1.49\times$ at Q2 on one
-GPU sits squarely in that range, and our byte accounting agrees with theirs to
-the digit ($1.41\times$ against $1.42\times$ for the \texttt{fp64}
-traffic-bound ceiling). Single-GPU measurements of a blocked format therefore say
-nothing about it at scale, which is worth stating because the temptation to
+against; on one GPU the tuned scalar kernel wins. That work reports the blocked
+kernel
+taking $1.44\times$ (Q1) and $1.62\times$ (Q2) the time of the scalar one on one
+GPU, and running $1.42\times$ \emph{faster} than it on 27 GPUs. Our $1.49\times$
+at Q2 on one GPU sits squarely in that range, and our byte accounting agrees
+with theirs to the digit: $1.41\times$ against $1.42\times$ for the
+traffic-bound ceiling on blocking in \texttt{fp64}. Single-GPU measurements of a
+blocked format therefore say nothing about its behaviour at scale, which is
+worth stating because the temptation to
 generalize from one device is strong.
 
 What does not follow from that work, because it measures only \texttt{fp64}, is
-the precision behaviour: going from \texttt{fp64} to \texttt{fp32} makes the
-blocked kernel $0.81\times$ --- slower --- while the scalar kernel gets
-$1.30\times$ faster. The byte model predicts the opposite. At \texttt{fp64} the
-index is 4 of the 12 bytes per scalar nonzero and blocking saves $30\%$; at
-\texttt{fp32} the values shrink to 4 bytes, the index share rises, and blocking
-should save $45\%$, raising the blocked ceiling from $1.42\times$ to
-$1.80\times$. That the measurement moves the other way says the blocked kernel
+the precision behaviour: going from \texttt{fp64} to \texttt{fp32} gives the
+blocked kernel a speedup of $0.81\times$ --- it slows down --- while the scalar
+kernel speeds up by $1.30\times$. The byte model predicts the opposite. At
+\texttt{fp64} the index is 4 of the 12 bytes per scalar nonzero and blocking
+saves $30\%$ of the traffic; at \texttt{fp32} the values shrink to 4 bytes, the
+index share rises, and blocking should save $45\%$, raising the traffic-bound
+ceiling on blocking from $1.42\times$ to $1.80\times$. That the measurement
+moves the other way says the blocked kernel
 has left the bandwidth-bound regime at four-byte values --- the same transition
 \S\ref{sec:intro} found for \texttt{fp16} in the standalone kernel, arriving one
 format earlier because blocking has already removed most of the traffic.
@@ -904,11 +940,13 @@ variable that cannot be lowered alone may be lowerable in combination. The
 prefilter can therefore return a wider assignment than an unfiltered search. We
 report both routes rather than presenting the cheap one as equivalent.
 
-\paragraph{No performance measurement.} The numpy evaluator answers how many bits
-the arithmetic requires, never whether a configuration is faster. The dual
-objective that motivates this paper requires an evaluator that compiles and
-times real code. Until one exists, every performance claim here is an argument
-about hardware trends rather than a measurement.
+\paragraph{No performance measurement in the search loop.} The numpy evaluator
+answers how many bits the arithmetic requires, never whether a configuration is
+faster. The timings of Tables~\ref{tab:spmv} and~\ref{tab:e2e} come from
+separately written kernels and uniform builds, not from the tuning loop, so the
+search cannot minimize measured time. The dual objective that motivates this
+paper requires an evaluator that compiles and times real code, and none exists
+yet.
 
 \paragraph{Granularity at scale.} Instruction-level attribution cost $50\times$
 runtime and, in its offline form, 256\,GB on a small benchmark. Applying it to a
@@ -932,10 +970,11 @@ its own. \S\ref{sec:petsc} makes the gap concrete: the same residual may be
 stored in 16 bits and may not be evaluated in fewer than 33.
 
 \paragraph{The optimization gap, mostly sidestepped.} Tuning at \texttt{-O0} and
-shipping at \texttt{-O3} bites tools whose variables are compiler temporaries
+shipping at \texttt{-O3} is a hazard for tools whose variables are compiler
+temporaries
 that optimization deletes or keeps in registers. Our variables are algorithmic
 quantities --- a stored matrix, a residual vector --- that survive optimization
-by construction because they live in memory. What remains is the previous
+by construction because they live in memory. What remains is the gap of the previous
 paragraph: fused or extended-precision arithmetic on scalars differs from
 per-operation rounding, which matters for reductions and for nothing else here.
 
@@ -954,7 +993,7 @@ constraint-based route.
 
 \paragraph{Parallel revival.} PROMISE has recently been extended with FloatX to
 support \texttt{bfloat16} and both 8-bit encodings, using CADNA's discrete
-stochastic arithmetic for validation~\cite{promise2026}. That work reaches the
+stochastic arithmetic for validation~\cite{promise2026}. That work draws the
 same conclusion as ours about the value of revisiting these methods for modern
 formats, from an independent lineage, and reports that $43\%$ of variables admit
 32 bits or fewer and $28\%$ admit 16 or fewer. Its benchmarks remain small and
@@ -1012,9 +1051,10 @@ unless convergence is judged by an independent high-precision residual.
 
 Finally, the payoff. We set out to show that the hardware had changed enough to
 make these methods worth reviving, and the measurement does not say quite that.
-Blocked \texttt{fp32} operator storage costs no iterations and $2.86\times$ less
-time per product than scalar \texttt{fp64}, which is the result we hoped for. But
-scalar \texttt{fp32} on a seven-point stencil buys $1.07\times$ --- $19\%$ of what
+Blocked \texttt{fp32} operator storage costs no iterations and runs each product
+$2.86\times$ faster than scalar \texttt{fp64}, which is the result we hoped for.
+But scalar \texttt{fp32} on a seven-point stencil yields a $1.07\times$ speedup
+--- $19\%$ of what
 the byte model allows, and indistinguishable from the $0.0\%$ the 2013 evaluation
 reported. On the data structures the original tools targeted, their conclusion
 still holds.
@@ -1025,19 +1065,19 @@ blocking, and elasticity, multi-species transport and any other multi-component
 physics amortize it by construction. That is a narrower claim than the one we
 started with and a more useful one, because it says where to look. It also says
 what a precision-tuning tool cannot do on its own: the same recommendation is
-worth $2.86\times$ or $1.07\times$ depending on a storage decision outside its
-model, which is why we factorize the objective rather than search on it.
+worth a $2.86\times$ or a $1.07\times$ speedup depending on a storage decision
+outside its model, which is why we factorize the objective rather than search on it.
 
-The end-to-end check closes it (\S\ref{sec:e2e}): complete single- and
+The end-to-end check (\S\ref{sec:e2e}) closes the loop: complete single- and
 double-precision builds of a production elasticity solver, same iteration counts,
-same answer, about $1.4\times$ faster. And it adds the finding we would not have
-reached from kernels alone --- that the larger share of that gain is in finite
-element assembly, which is compute-bound, rather than in the bandwidth-bound
-solve everyone reaches for first.
+same answer, about $1.4\times$ faster. And it adds a finding that kernel measurements
+alone could not have produced --- that the larger share of that gain is in
+finite element assembly, which is compute-bound, rather than in the
+bandwidth-bound solve, the usual first target.
 
 What remains open is not a measurement but a scope. Every result here concerns
 \emph{storage} precision, on a CPU-emulated model for the search tiers and on two
-uniformly-built libraries for the end-to-end check. Mixed-precision arithmetic
+uniformly built libraries for the end-to-end check. Mixed-precision arithmetic
 within a kernel, a per-variable assignment compiled into a real solver rather
 than a uniform build, and the blocked device kernel's anomalous behaviour in
 \texttt{fp32} are each a separate piece of work.
