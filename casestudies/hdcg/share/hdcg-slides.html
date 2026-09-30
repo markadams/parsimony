@@ -1,0 +1,579 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>:root{color-scheme:light;box-sizing:border-box}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<title>HDCG Precision Study</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --paper: #F2F3EF;
+    --board: #FBFBF9;
+    --ink: #1B2230;
+    --muted: #6E7583;
+    --rule: #D4D7D0;
+    --accent: #34479B;
+    --accent-soft: #E3E7F7;
+    --jade: #2B7F69;
+    --jade-soft: #DDEFE8;
+    --warn: #A65A1E;
+    --code-bg: #ECEEE9;
+    --display: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #12161E;
+      --board: #1A1F2A;
+      --ink: #E6E8E3;
+      --muted: #98A0AD;
+      --rule: #2C3340;
+      --accent: #8C9BE8;
+      --accent-soft: #232B4A;
+      --jade: #5FBF9F;
+      --jade-soft: #1E3A32;
+      --warn: #E0955A;
+      --code-bg: #232935;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #12161E;
+    --board: #1A1F2A;
+    --ink: #E6E8E3;
+    --muted: #98A0AD;
+    --rule: #2C3340;
+    --accent: #8C9BE8;
+    --accent-soft: #232B4A;
+    --jade: #5FBF9F;
+    --jade-soft: #1E3A32;
+    --warn: #E0955A;
+    --code-bg: #232935;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 17px;
+    line-height: 1.45;
+    padding-block: 32px;
+    padding-inline: 20px;
+  }
+  .deck {
+    max-width: 1120px;
+    margin: 0 auto;
+    display: grid;
+    gap: 36px;
+  }
+  .slide {
+    background: var(--board);
+    border: 1px solid var(--rule);
+    padding: 40px 48px 34px;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 22px;
+    min-height: 560px;
+  }
+  .slide header {
+    display: grid;
+    gap: 6px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  h1, h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    text-wrap: balance;
+    margin: 0;
+    line-height: 1.12;
+  }
+  h1 { font-size: 52px; }
+  h2 { font-size: 36px; }
+  h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 19px;
+    margin: 0 0 8px;
+    color: var(--accent);
+  }
+  .slide footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    border-top: 1px solid var(--rule);
+    padding-top: 10px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 32px;
+    align-content: start;
+  }
+  p { margin: 0; max-width: 62ch; }
+  ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 62ch; }
+  li::marker { color: var(--accent); }
+  code, .mono {
+    font-family: var(--mono);
+    font-size: 0.92em;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  .lead {
+    font-size: 22px;
+    line-height: 1.4;
+    max-width: 44ch;
+  }
+  .thesis {
+    font-family: var(--display);
+    font-size: 26px;
+    font-weight: 500;
+    line-height: 1.3;
+    max-width: 40ch;
+    border-left: 4px solid var(--accent);
+    padding-left: 18px;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td {
+    text-align: left;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  th {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  td.num { font-family: var(--mono); text-align: right; }
+  th.num { text-align: right; }
+  .tablewrap { overflow-x: auto; }
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .tag.fine { background: var(--jade-soft); color: var(--jade); }
+  .status {
+    border: 1px dashed var(--rule);
+    padding: 12px 16px;
+    color: var(--muted);
+    font-size: 15px;
+  }
+  .status strong { color: var(--ink); }
+  .formula {
+    font-family: var(--mono);
+    font-size: 18px;
+    background: var(--code-bg);
+    padding: 10px 14px;
+    display: inline-block;
+  }
+  .below { color: var(--jade); }
+  .above { color: var(--warn); }
+  .small { font-size: 14px; color: var(--muted); }
+  .grid2 { display: grid; gap: 14px; }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; }
+  .kv dt { font-family: var(--mono); font-size: 13px; color: var(--muted); padding-top: 3px; }
+  .kv dd { margin: 0; }
+  /* Questions slide: three standing groups, each question self-contained. */
+  .qcols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 30px;
+    align-content: start;
+  }
+  .qgroup { display: grid; gap: 10px; align-content: start; }
+  .qlist {
+    margin: 0;
+    padding-left: 22px;
+    display: grid;
+    gap: 15px;
+    max-width: 48ch;
+    font-size: 15px;
+    line-height: 1.46;
+  }
+  .qlist li::marker { color: var(--accent); font-family: var(--mono); font-size: 13px; }
+  .qlist strong { display: block; margin-bottom: 3px; }
+  .qlist code { font-size: 0.88em; }
+  .pull {
+    font-family: var(--display);
+    font-size: 21px;
+    font-weight: 500;
+    line-height: 1.28;
+    max-width: 38ch;
+    border-left: 4px solid var(--warn);
+    padding-left: 16px;
+  }
+  @media (max-width: 640px) {
+    .slide { padding: 26px 20px 22px; min-height: 0; }
+    h1 { font-size: 36px; }
+    h2 { font-size: 28px; }
+    body { font-size: 16px; }
+  }
+  @media print {
+    body { padding: 0; background: #fff; }
+    .slide { break-after: page; border: none; min-height: 0; }
+  }
+</style>
+
+<main class="deck">
+
+  <section class="slide" id="s1">
+    <header>
+      <div class="eyebrow">Working meeting · 2026-09-28</div>
+      <h1>How many bits does the HDCG preconditioner need?</h1>
+    </header>
+    <div class="grid2">
+      <p class="lead">A storage-precision study of Grid's HDCG coarse-space inputs, run on Grid itself, and the matching reduced-precision work in the PETSc blocked GPU path.</p>
+      <p class="thesis">Peter has built the precision knobs. Nobody has yet measured, variable by variable, where each one breaks.</p>
+    </div>
+    <footer><span>Mark Adams · LBNL</span><span>Code facts verified against Grid <code>develop 865c338d</code> and PETSc <code>jpusztay/feature-grid-interface</code></span></footer>
+  </section>
+
+  <section class="slide" id="s2">
+    <header>
+      <div class="eyebrow">1 / 8 · Where things stand</div>
+      <h2>Grid's develop branch already has the precision machinery</h2>
+    </header>
+    <div class="cols">
+      <div>
+        <h3>Grid develop (Boyle, 24 Sept 2026)</h3>
+        <ul>
+          <li><code>MultiGeneralCoarsenedOperatorV2</code>: the coarse BLAS scalar follows the coarse coefficient type, ComplexF or ComplexD.</li>
+          <li>Apply is <code>gemmBatched(nbasis, nrhs, nbasis)</code> per stencil leg, with legs grouped to reach a measured batch target (9216).</li>
+          <li><code>HDCGSolver</code> carries an fp64 fine chain and an fp32 fine chain behind a mixed-precision seam; three-level mrhs variants exist.</li>
+          <li><code>GridBLAS</code> exposes 16F / BF16 / TF32 <em>compute</em> types. Storage of the coarse stencil stays fp32 or fp64.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>PETSc grid-interface branch</h3>
+        <ul>
+          <li>Matrix-free Wilson and Shamir DWF shells on a hypercubic DMPlex, cross-checked against <code>WilsonFermionD</code> / <code>DomainWallFermionD</code>; SLEPc spectra in <code>ex3</code>.</li>
+          <li>Vec ↔ Lattice is a full host copy with SIMD layout conversion (<code>PetscToGrid</code> / <code>GridToPetsc</code>).</li>
+          <li>PETSc pins Grid at a March 2024 commit: no <code>multigrid/</code>, CPU-only GEN SIMD, <code>--enable-comms=mpi-auto</code> only.</li>
+          <li>Branch base is now 784 commits behind <code>main</code>.</li>
+        </ul>
+      </div>
+    </div>
+    <footer><span>Sources: Grid/algorithms/multigrid/*.h, Grid/algorithms/blas/BatchedBlas.h, config/BuildSystem/config/packages/grid.py</span><span>1</span></footer>
+  </section>
+
+  <section class="slide" id="s3">
+    <header>
+      <div class="eyebrow">2 / 8 · Why storage bits matter on the coarse grid</div>
+      <h2>The coarse operator apply is bandwidth-bound at production batch</h2>
+    </header>
+    <div class="cols">
+      <div class="grid2">
+        <p>Per coarse site and stencil leg: a <span class="mono">nbasis × nbasis</span> complex block times <span class="mono">nbasis × nrhs</span>. In fp32 complex storage the arithmetic intensity is</p>
+        <div class="formula">AI = n·r / (n + 2r)  flop/B</div>
+        <p>Below the roofline ridge, time is set by bytes of the stencil, and Grid's own measurement agrees: 530 → 728 GB/s as the batch grows on MI250X. After batching, the next lever is the width of the stored stencil.</p>
+        <p class="small">Stencil bytes per coarse site at nbasis 62, 81 legs: 2.5 MB fp32, 5.0 MB fp64. 16-bit storage would halve the stream again.</p>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>nrhs</th><th class="num">AI, n = 40</th><th class="num">AI, n = 62</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="mono">1</td><td class="num">0.95</td><td class="num">0.97</td></tr>
+            <tr><td class="mono">4</td><td class="num">3.3</td><td class="num">3.5</td></tr>
+            <tr><td class="mono">8</td><td class="num">5.7</td><td class="num">6.4</td></tr>
+            <tr><td class="mono">12</td><td class="num">7.5</td><td class="num">8.7</td></tr>
+            <tr><td class="mono">16</td><td class="num">8.9</td><td class="num">10.6</td></tr>
+            <tr><td class="mono">32</td><td class="num">12.3</td><td class="num">15.7</td></tr>
+          </tbody>
+        </table>
+        <p class="small" style="margin-top:10px">fp32 ridge: A100 ≈ 10 flop/B, MI250X ≈ 15 flop/B. Production HDCG runs nrhs 8–12 at nbasis 40–62.</p>
+      </div>
+    </div>
+    <footer><span>flops 8n²r, bytes 8n² + 16nr per block; ridge = peak fp32 flop/s ÷ HBM bandwidth</span><span>2</span></footer>
+  </section>
+
+  <section class="slide" id="s4">
+    <header>
+      <div class="eyebrow">3 / 8 · The tool</div>
+      <h2>Parsimony: how few bits does each variable actually need?</h2>
+    </header>
+    <div class="cols">
+      <div class="grid2">
+        <p>Precimonious (SC'13) and its Blame Analysis follow-on (ICSE'16) came out of the Berkeley/LBNL CORVETTE project. They searched precision configurations by delta debugging and got the method right. The hardware was the problem.</p>
+        <p class="pull">Blame Analysis reported 0.0% speedup at every error threshold for half of its ten benchmarks. On a 2013 CPU, fp64 → fp32 bought nothing once the inserted casts were paid for.</p>
+        <p>bf16, fp8, tensor cores and bandwidth-bound kernels change the objective function, so the search algorithms are worth reviving. Parsimony is a clean-room reimplementation: no code from the 2013 tools, and the formats that matter now rather than the fp32/fp64/fp80 lattice of that era.</p>
+      </div>
+      <div class="grid2">
+        <h3>Two pluggable axes, so a cheap search and an expensive confirmation share one interface</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Axis</th><th>What plugs in</th></tr></thead>
+            <tbody>
+              <tr><td><span class="tag">evaluator</span></td><td>numpy emulation for algorithms under design; a native binary taking formats on its command line, so no probe costs a rebuild; hardware timing</td></tr>
+              <tr><td><span class="tag">search</span></td><td>solo-sensitivity prefilter for per-variable floors, then <code>PrecisionDDMin</code> delta debugging down the ladder</td></tr>
+              <tr><td><span class="tag fine">criterion</span></td><td>relative error, or convergence within an iteration budget</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">That third row is the design result, not a setting. For an iterative method, relative error against an fp64 run measures bit-reproduction of a rounding trajectory rather than solution quality, and for a preconditioner it measures nothing at all — a worse preconditioner changes the iteration count and cannot change the fixed point. Accuracy is held by the solver's own stopping test; precision trades against iterations.</p>
+        <p class="small">Measured example: in a Bratu Newton–Krylov solve the stored Jacobian's knee is 10 ± 1 bits, and below it the solver never diverges. The nonlinear term falls under the ulp of the Laplacian's diagonal, Newton degenerates to Picard, and fp8 turns out to be slow rather than fatal.</p>
+      </div>
+    </div>
+    <footer><span>Storage precision only: what is stored and re-read, not what is computed in a register</span><span>3</span></footer>
+  </section>
+
+  <section class="slide" id="s5">
+    <header>
+      <div class="eyebrow">4 / 8 · The study</div>
+      <h2>Round each preconditioner input in storage, keep fp64 arithmetic, count outer iterations</h2>
+    </header>
+    <div class="cols">
+      <div class="grid2">
+        <p>Parsimony's method: a variable is stored at a virtual width of <span class="mono">k</span> significand bits (round-to-nearest, full exponent range), everything is computed in fp64, and a configuration passes if the outer HDCG solve converges within the reference iteration count, judged by an independent fp64 true residual of the fine operator.</p>
+        <p>Search: solo-sensitivity prefilter per variable, then delta-debugging over the ladder <span class="mono">v53 v40 v30 v24 v16 v11 v8</span>. Roughly 40–80 solves.</p>
+        <p>Result: a bit-knee per variable. That is the number an fp32-versus-fp64 comparison cannot give.</p>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Variable</th><th>Rounded where</th><th>Expectation to test</th></tr></thead>
+          <tbody>
+            <tr><td><span class="tag fine">subspace</span></td><td>near-null vectors after orthogonalisation, before coarsening</td><td>Galerkin stays consistent; gentle degradation</td></tr>
+            <tr><td><span class="tag">stencil</span></td><td>coarse stencil blocks via <code>GetMatrix</code> / <code>SetMatrix</code></td><td>breaks operator–projector consistency; may show a sharp knee</td></tr>
+            <tr><td><span class="tag">evec</span></td><td>coarse deflation eigenvectors before import</td><td>only the initial guess is affected; most tolerant</td></tr>
+          </tbody>
+        </table>
+        <p class="small" style="margin-top:10px">Not measured: reduced <em>arithmetic</em> (ComplexF coarse space, 16-bit compute types). This complements Peter's comparison rather than repeating it.</p>
+      </div>
+    </div>
+    <footer><span>Method as in Parsimony's Bratu and elasticity case studies; observable = iterations at fixed tolerance</span><span>4</span></footer>
+  </section>
+
+  <section class="slide" id="s5b">
+    <header>
+      <div class="eyebrow">5 / 8 · First measurement, 27 Sept</div>
+      <h2>The coarse stencil costs nothing in iterations down to 8 bits; its accuracy floor is exactly 2<sup>−k</sup></h2>
+    </header>
+    <div class="cols">
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>stored as</th><th class="num">sig. bits</th><th class="num">δ stencil</th><th class="num">true resid</th><th class="num">CG iters</th></tr></thead>
+          <tbody>
+            <tr><td>fp64</td><td class="num">53</td><td class="num">0</td><td class="num">3.09e−09</td><td class="num">5</td></tr>
+            <tr><td class="mono">v40</td><td class="num">40</td><td class="num">3.9e−13</td><td class="num">3.09e−09</td><td class="num">5</td></tr>
+            <tr><td class="mono">v30</td><td class="num">30</td><td class="num">4.0e−10</td><td class="num">3.10e−09</td><td class="num">5</td></tr>
+            <tr><td><span class="tag">fp32</span> = <span class="mono">v24</span></td><td class="num">24</td><td class="num">2.5e−08</td><td class="num">1.83e−08</td><td class="num">5</td></tr>
+            <tr><td class="mono">v16</td><td class="num">16</td><td class="num">6.5e−06</td><td class="num">4.65e−06</td><td class="num">5</td></tr>
+            <tr><td class="mono">v12</td><td class="num">12</td><td class="num">1.0e−04</td><td class="num">7.48e−05</td><td class="num">5</td></tr>
+            <tr><td><span class="tag fine">bf16</span> = <span class="mono">v8</span></td><td class="num">8</td><td class="num">1.8e−03</td><td class="num">1.20e−03</td><td class="num">5</td></tr>
+            <tr><td><span class="tag">fp16</span></td><td class="num">11, 5 exp</td><td class="num above">1.000</td><td class="num">1.50e−04</td><td class="num">5</td></tr>
+          </tbody>
+        </table>
+        <p class="small" style="margin-top:10px">Grid coarse Dirac stencil, storage rounded, fp64 arithmetic. CG against the rounded operator, residual judged against an exact second copy. Two RHS cases agree to three digits.</p>
+      </div>
+      <div class="grid2">
+        <h3>What the two columns say</h3>
+        <p><strong>Iterations never move.</strong> Five at every format, to eight bits. The coarse operator is rate-limiting, not accuracy-limiting: rounding it changes which problem is solved, not how long that takes. In HDCG it lives inside a preconditioner, where the fine operator fixes the answer — so this is the column that bears on 16-bit stencil storage, and it is flat.</p>
+        <p><strong>The accuracy floor is the stored precision.</strong> δ ≈ 2<sup>−(k+1.2)</sup> across nine rungs over six decades, and the true residual follows it once it clears the solver tolerance. As a <em>solve target</em> the stencil needs ~30 bits at tolerance 1e−8 — which is log₂(1/tol) plus margin, not a property of the operator.</p>
+        <p><strong>fp16 fails on exponent range, not precision.</strong> δ = 1 exactly: every entry underflows the 5-bit exponent and the stencil rounds to zero. bf16, with three <em>fewer</em> significand bits but fp32's exponent, is fine. These entries are unusually small in the free field, so the size of that effect is partly an artifact — the mechanism is not.</p>
+        <p class="small"><strong>Emulation checked against hardware on real data:</strong> fp32 reproduces <span class="mono">v24</span> and bf16 reproduces <span class="mono">v8</span> to every digit.</p>
+      </div>
+    </div>
+    <footer><span>Preliminary: free field, random subspace, nbasis 20, Ls 8, 16³×32, 4×A100 — not an ensemble result. <a href="https://claude.ai/code/artifact/7d0d3321-d14e-49cd-9a49-693267fa8c6b" style="color:var(--accent)">Interactive walkthrough and code</a></span><span>5</span></footer>
+  </section>
+
+  <section class="slide" id="s6">
+    <header>
+      <div class="eyebrow">6 / 8 · Setup and status</div>
+      <h2>Grid's own stable HDCG driver, built with Grid's own Perlmutter recipe</h2>
+    </header>
+    <div class="cols">
+      <div>
+        <dl class="kv">
+          <dt>driver</dt><dd><code>tests/debug/Test_general_coarse_hdcg.cc</code> (ComplexD classes; not under active change)</dd>
+          <dt>operator</dt><dd>Möbius, mass 0.01, M5 1.8, Ls 16, red-black Schur</dd>
+          <dt>coarse space</dt><dd>nbasis 40, 4⁴ blocks, next-to-next-to-next-nearest 5D stencil</dd>
+          <dt>lattice</dt><dd>16³ × 32 → 512 coarse sites</dd>
+          <dt>solve</dt><dd>two-level mrhs CG, nrhs 8, tolerance 1e-8</dd>
+          <dt>build</dt><dd><code>systems/Perlmutter/config-command</code>: CUDA, GPU SIMD, nvlink shm; 4 A100 per job, <code>m499_g</code></dd>
+          <dt>knobs</dt><dd>one binary, <code>--round-subspace k --round-stencil k --round-evec k</code>, JSON out</dd>
+        </dl>
+      </div>
+      <div class="grid2">
+        <h3>Gauge configuration</h3>
+        <ul>
+          <li>Reference: <code>ckpoint_lat.4000</code>, the 16³×32 configuration the Grid tests and the PETSc branch tests both use.</li>
+          <li>Available now: a self-generated quenched configuration from <code>Test_hmc_WilsonGauge</code>. Real low modes; not comparable to the branch's cross-check outputs.</li>
+          <li>A hot configuration validates the pipeline only.</li>
+        </ul>
+        <div class="status"><strong>Status, 27 Sept:</strong> Grid <code>develop 865c338d</code> built on Perlmutter with CUDA (two local patches: an <code>__rdtsc</code> shim that collides with cudatoolkit 13.2, and <code>TwoLevelCGmrhs</code> not exposing its iteration count). Rounding hooks run on GPU. <strong>HDCG itself does not run</strong> (Q1, last slide), so the measurement above was taken on the single-RHS coarsening path instead.</div>
+      </div>
+    </div>
+    <footer><span>Limits to state with any result: 512 coarse sites, one configuration, storage not arithmetic</span><span>6</span></footer>
+  </section>
+
+  <section class="slide" id="s7">
+    <header>
+      <div class="eyebrow">7 / 8 · PETSc side</div>
+      <h2>The same question for PETSc's blocked GPU operators</h2>
+    </header>
+    <div class="cols">
+      <div class="grid2">
+        <p>On the 1.05M-DOF elasticity beam, fp32 operator storage costs zero CG iterations, and the payoff is set by the format: on an A100, blocked fp32 SpMV runs 1.75× over blocked fp64 and 2.86× over scalar fp64. Scalar CSR cannot halve its time; its 4-byte index per nonzero caps the saving at 1.5×.</p>
+        <p>PETSc cannot express "fp64 outer solve, fp32 preconditioner" today without a whole-library single-precision build. The fork adds it in three steps, each gated on the frozen convergence result (19 CG iterations, tip displacement 1.23166).</p>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Step</th><th>What</th><th>Exit</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">A</td><td>stored-value type separated from the vector type in every device kernel (<code>MatScalar</code>, <code>ValT</code> templates)</td><td>bitwise-identical results</td></tr>
+            <tr><td class="mono">B</td><td>per-matrix fp32 shadow of the values, selected per object</td><td>gate holds hierarchy-wide in fp32; fp32 vector loads measured on both backends</td></tr>
+            <tr><td class="mono">C</td><td>reduced-precision view installed as each level's smoother operator; residuals and outer Krylov stay fp64</td><td>gate holds; end-to-end solve speedup on 1 and 8 GPUs</td></tr>
+          </tbody>
+        </table>
+        <p class="small" style="margin-top:10px">Multi-RHS smoothing (batched Chebyshev, point-block Jacobi) is the prerequisite for any PETSc component to sit inside an mrhs solve.</p>
+      </div>
+    </div>
+    <footer><span>Numbers: Parsimony elasticity case study, A100, <code>-log_view_gpu_time</code></span><span>7</span></footer>
+  </section>
+
+  <section class="slide" id="s8">
+    <header>
+      <div class="eyebrow">8 / 8 · Questions for Peter</div>
+      <h2>Questions for Peter</h2>
+      <p class="small">Written to be read rather than presented, so each one carries its own context. Q1 is the one that blocks the study. Pipeline, code and measured data, interactively: <a href="https://claude.ai/code/artifact/7d0d3321-d14e-49cd-9a49-693267fa8c6b" style="color:var(--accent)">Parsimony on Grid</a>.</p>
+    </header>
+    <div class="qcols">
+      <div class="qgroup">
+        <h3>Blocking</h3>
+        <ol class="qlist">
+          <li>
+            <strong>Which driver should an HDCG precision study start from?</strong>
+            <code>tests/debug/Test_general_coarse_hdcg.cc</code> needs
+            <code>MultiGeneralCoarsenedMatrix(geom, CoarseMrhs)</code> followed by
+            <code>CoarsenOperator</code>. That class now lives in
+            <code>Grid/algorithms/multigrid/deprecated/</code>, and the block that used it in
+            <code>Test_general_coarse.cc</code> is inside <code>#if 0</code>. On
+            <code>develop 865c338d</code>, CUDA/sm_80, it segfaults inside the constructor —
+            immediately after <code>NonLocalStencilGeometry has 81 terms</code> — at 1, 2, 4
+            and 8 ranks, with unit / hot gauge, Chebyshev or random subspace, nbasis 20 or 40,
+            and <code>--device-mem</code> from 2 GB to 32 GB. Is that path expected to work, or
+            should this move to <code>MultiGeneralCoarsenedOperatorV2</code> /
+            <code>HDCGMultiGrid.h</code>? If the latter, is there a driver to copy, or is
+            writing one the first job?
+          </li>
+          <li>
+            <strong>What do you run <code>Test_general_coarse_hdcg</code> on?</strong>
+            The stock configuration (Ls 16, nbasis 40, 4⁴ blocks, 16³×32) does not fit four
+            A100s: <code>Test_general_coarse.cc</code> at 1 rank dies with
+            <code>cudaMalloc failed for 8153726976 out of memory</code>. Node count and any
+            flags beyond <code>systems/Perlmutter/config-command</code> would save guessing.
+          </li>
+          <li>
+            <strong>Where is <code>ckpoint_lat.4000</code> on Perlmutter?</strong>
+            A path is enough. Everything below is free-field, which is why it is preliminary.
+          </li>
+        </ol>
+      </div>
+      <div class="qgroup">
+        <h3>About the measurement</h3>
+        <ol class="qlist" start="4">
+          <li>
+            <strong>Does the flat iteration count match what you would expect of a physics coarse space?</strong>
+            Rounding the coarse Dirac stencil in storage to as few as 8 significand bits left CG
+            at 5 iterations, unchanged, while the attainable residual tracked 2<sup>−k</sup>
+            exactly. Read as: the coarse operator is rate-limiting, not accuracy-limiting, so
+            inside a preconditioner its stored width should be nearly free. Free field and a
+            random subspace, so the conditioning is benign — does it survive a real ensemble?
+          </li>
+          <li>
+            <strong>Is 16-bit <em>storage</em> of the coarse stencil worth doing?</strong>
+            This is storage only — fp64 arithmetic throughout — so it is orthogonal to the
+            16F/BF16 <em>compute</em> types in <code>GridBLAS</code>. The apply is
+            bandwidth-bound at production batch (AI ≈ 8.7 flop/B at nbasis 62, nrhs 12), so
+            halving the stencil stream again is the next lever after batching. Is that
+            interesting to Grid, or is fp32-vs-fp64 the only distinction that matters in practice?
+          </li>
+          <li>
+            <strong>bf16 rather than fp16, if so.</strong>
+            In our test fp16 destroyed the stencil outright (relative change 1.0 — every entry
+            underflowed the 5-bit exponent) while bf16, with three <em>fewer</em> significand
+            bits but fp32's exponent range, was indistinguishable from an 8-bit virtual format.
+            Our entries are unusually small because of the free field, so the magnitude of that
+            is partly an artifact — but do the coarse stencil entries in production sit
+            comfortably inside fp16's exponent range, or is bf16 the only sane 16-bit choice?
+          </li>
+          <li>
+            <strong>Which HDCG inputs would you predict to be most and least tolerant?</strong>
+            The plan measures three — the near-null subspace, the coarse stencil, and the
+            deflation eigenvectors. A prediction recorded before the measurement is worth more
+            than one after it.
+          </li>
+        </ol>
+      </div>
+      <div class="qgroup">
+        <h3>PETSc side</h3>
+        <ol class="qlist" start="8">
+          <li>
+            <strong>Which Grid commit should PETSc pin, and with what configure flags?</strong>
+            <code>config/BuildSystem/config/packages/grid.py</code> pins
+            <code>da593796</code> (March 2024): no <code>multigrid/</code> directory, and the
+            only flag passed is <code>--enable-comms=mpi-auto</code>, so it is a CPU-only GEN
+            SIMD build. For anyone wanting a performance build through PETSc, what should the
+            SIMD target, accelerator and shm settings be?
+          </li>
+          <li>
+            <strong>Is a portable reference shell worth having alongside a Grid-backed one?</strong>
+            On the PETSc side the lattice operators could be a parallel-correct,
+            Hermitian-transpose-aware DMPlex shell used as the portable reference, with a second
+            shell calling Grid directly in Grid's own layout. Useful, or duplicated effort?
+          </li>
+        </ol>
+      </div>
+      <div class="qgroup">
+        <h3>Two patches, if wanted upstream</h3>
+        <ol class="qlist" start="10">
+          <li>
+            <strong><code>Grid/perfmon/PerfCount.h</code> — build break on current NERSC defaults.</strong>
+            Under <code>GRID_CUDA</code> Grid defines no-op <code>__rdtsc</code> /
+            <code>__rdpmc</code> shims to keep <code>x86intrin.h</code> away from nvcc, but
+            cudatoolkit 13.2's header chain declares the real <code>__rdtsc</code> first:
+            <em>cannot overload functions distinguished by return type alone</em>
+            (<code>unsigned long long</code> vs <code>uint64_t</code>). Both uses are in
+            <code>Stat.cc</code>, host-side, never in a device kernel, so replacing the shims
+            with <code>#include &lt;x86intrin.h&gt;</code> fixes it and restores real timings.
+          </li>
+          <li>
+            <strong><code>AdefMrhs.h</code> — <code>TwoLevelCGmrhs</code> prints its iteration count but does not expose it.</strong>
+            Added <code>IterationsToComplete</code>, <code>TrueResidual</code> and
+            <code>ConvergedFlag</code>, filled on both exits, exactly as
+            <code>ConjugateGradient</code> already does. Without it any automated study has to
+            scrape stdout.
+          </li>
+        </ol>
+      </div>
+    </div>
+    <footer><span>Mark Adams · mfadams@lbl.gov · plan and raw data: parsimony/casestudies/hdcg/</span><span>8</span></footer>
+  </section>
+
+</main>
+
+</body></html>

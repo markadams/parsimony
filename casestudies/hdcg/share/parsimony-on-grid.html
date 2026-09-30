@@ -1,0 +1,656 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>:root{color-scheme:light;box-sizing:border-box}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<title>Parsimony on Grid</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --paper: #F2F3EF;
+    --board: #FBFBF9;
+    --sunk: #ECEEE9;
+    --ink: #1B2230;
+    --muted: #6E7583;
+    --rule: #D4D7D0;
+    --accent: #34479B;
+    --accent-soft: #E3E7F7;
+    --jade: #2B7F69;
+    --jade-soft: #DDEFE8;
+    --warn: #A65A1E;
+    --code-bg: #ECEEE9;
+    --code-ink: #2A3140;
+    --s1: #34479B;   /* validated light categorical pair */
+    --s2: #A65A1E;
+    --display: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #12161E;
+      --board: #1A1F2A;
+      --sunk: #232935;
+      --ink: #E6E8E3;
+      --muted: #98A0AD;
+      --rule: #2C3340;
+      --accent: #8C9BE8;
+      --accent-soft: #232B4A;
+      --jade: #5FBF9F;
+      --jade-soft: #1E3A32;
+      --warn: #E0955A;
+      --code-bg: #232935;
+      --code-ink: #D7DBE4;
+      --s1: #6F80D4;   /* validated dark categorical pair */
+      --s2: #C9813F;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #12161E;
+    --board: #1A1F2A;
+    --sunk: #232935;
+    --ink: #E6E8E3;
+    --muted: #98A0AD;
+    --rule: #2C3340;
+    --accent: #8C9BE8;
+    --accent-soft: #232B4A;
+    --jade: #5FBF9F;
+    --jade-soft: #1E3A32;
+    --warn: #E0955A;
+    --code-bg: #232935;
+    --code-ink: #D7DBE4;
+    --s1: #6F80D4;
+    --s2: #C9813F;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.5;
+    padding-block: 34px 60px;
+    padding-inline: 20px;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; display: grid; gap: 34px; }
+
+  h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; line-height: 1.14; }
+  h1 { font-size: 44px; font-weight: 600; }
+  h2 { font-size: 27px; font-weight: 600; }
+  h3 { font-size: 17px; font-weight: 600; color: var(--accent); }
+  p { margin: 0; max-width: 68ch; }
+  .lead { font-size: 19px; max-width: 58ch; color: var(--ink); }
+  .small { font-size: 14px; color: var(--muted); max-width: 72ch; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  code, .mono { font-family: var(--mono); }
+  p code, li code, td code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-size: .88em; }
+
+  section { display: grid; gap: 16px; }
+  .panel { background: var(--board); border: 1px solid var(--rule); padding: 24px; display: grid; gap: 16px; }
+
+  /* ---- pipeline ---- */
+  .stages { display: flex; flex-wrap: wrap; gap: 8px; }
+  .stage {
+    font: 500 13px/1.3 var(--body);
+    background: var(--board); color: var(--ink);
+    border: 1px solid var(--rule); border-radius: 3px;
+    padding: 9px 13px; cursor: pointer; text-align: left;
+    display: grid; gap: 2px; min-width: 132px; flex: 1 1 132px;
+  }
+  .stage .n { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .stage .who { font-family: var(--mono); font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; }
+  .stage[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .stage[aria-selected="true"] .n { color: var(--accent); }
+  .stage:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .who.py { color: var(--jade); }
+  .who.cc { color: var(--warn); }
+
+  .stagebody { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.25fr); gap: 26px; align-items: start; }
+  @media (max-width: 760px) { .stagebody { grid-template-columns: 1fr; } }
+
+  pre {
+    margin: 0; background: var(--code-bg); color: var(--code-ink);
+    padding: 14px 16px; overflow-x: auto; font-family: var(--mono);
+    font-size: 12.5px; line-height: 1.55; border: 1px solid var(--rule);
+  }
+  pre .c { color: var(--muted); }
+  pre .k { color: var(--accent); }
+  .filename {
+    font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+    display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px;
+  }
+
+  /* ---- rounding playground ---- */
+  .play { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 26px; align-items: start; }
+  @media (max-width: 760px) { .play { grid-template-columns: 1fr; } }
+  .field { display: grid; gap: 6px; margin-bottom: 14px; }
+  .field label { font-size: 13px; color: var(--muted); font-family: var(--mono); }
+  input[type=text] {
+    font-family: var(--mono); font-size: 14px; padding: 8px 10px;
+    border: 1px solid var(--rule); background: var(--board); color: var(--ink); border-radius: 3px; width: 100%;
+  }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-family: var(--mono); font-size: 12px; padding: 4px 9px; cursor: pointer;
+    background: var(--board); color: var(--ink); border: 1px solid var(--rule); border-radius: 3px;
+  }
+  .chip:hover { border-color: var(--accent); }
+  .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .readout { display: grid; gap: 9px; font-variant-numeric: tabular-nums; }
+  .row { display: grid; grid-template-columns: 96px 1fr; gap: 12px; align-items: baseline; }
+  .row dt { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .row dd { margin: 0; font-family: var(--mono); font-size: 13.5px; word-break: break-all; }
+  .bits { font-family: var(--mono); font-size: 11px; line-height: 1.7; word-break: break-all; letter-spacing: .02em; }
+  .bits .keep { background: var(--accent-soft); color: var(--accent); }
+  .bits .drop { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+
+  /* ---- charts ---- */
+  figure { margin: 0; display: grid; gap: 8px; }
+  figcaption { font-size: 13.5px; color: var(--muted); max-width: 70ch; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .swatch { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
+  .chartbox { position: relative; }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .tip {
+    position: absolute; pointer-events: none; background: var(--board);
+    border: 1px solid var(--rule); padding: 7px 10px; font-size: 12.5px;
+    font-family: var(--mono); box-shadow: 0 2px 10px rgba(0,0,0,.14);
+    white-space: nowrap; border-radius: 3px; font-variant-numeric: tabular-nums;
+  }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 13.5px; }
+  th, td { text-align: left; padding: 6px 9px; border-bottom: 1px solid var(--rule); }
+  th { font-family: var(--mono); font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  td.num, th.num { text-align: right; font-family: var(--mono); }
+  .tablewrap { overflow-x: auto; }
+  details summary { cursor: pointer; font-size: 13px; color: var(--accent); font-family: var(--mono); }
+
+  .note { border-left: 3px solid var(--warn); padding-left: 14px; }
+  .caveat { background: var(--sunk); border: 1px dashed var(--rule); padding: 14px 16px; font-size: 14px; }
+  .caveat strong { color: var(--ink); }
+  footer.page { border-top: 1px solid var(--rule); padding-top: 14px; font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <header style="display:grid;gap:12px">
+    <div class="eyebrow">Parsimony × Grid · 27 September 2026</div>
+    <h1>Parsimony on Grid</h1>
+    <p class="lead">How a bit-width decision travels from a Python search into a Grid kernel on an A100, and what came back. Every code panel below is the real file, not a sketch.</p>
+  </header>
+
+  <!-- ============ PIPELINE ============ -->
+  <section>
+    <h2>The loop</h2>
+    <p>Parsimony splits into two halves that never need to know about each other. A <em>search</em> proposes a precision configuration; an <em>evaluator</em> runs the program under it and scores the result. Grid is the evaluator here, and the seam between them is a command-line flag and a JSON record — which is why no probe costs a rebuild.</p>
+    <div class="stages" role="tablist" aria-label="Pipeline stages"></div>
+    <div class="panel">
+      <div class="stagebody">
+        <div style="display:grid;gap:12px">
+          <h3 id="st-title"></h3>
+          <p id="st-text" class="small" style="font-size:15px;color:var(--ink)"></p>
+          <p id="st-note" class="small"></p>
+        </div>
+        <div>
+          <div class="filename"><span id="st-file"></span><span id="st-lang"></span></div>
+          <pre><code id="st-code"></code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PLAYGROUND ============ -->
+  <section>
+    <h2>What "storage rounding" does</h2>
+    <p>A variable is stored at <span class="mono">k</span> significand bits with float64's exponent range, then read back and computed on in full fp64. Nothing else changes. This is the exact function <span class="mono">round_bits.h</span> applies on the GPU and <span class="mono">parsimony.formats.round_to</span> applies in Python — the two agree bitwise over 372 doubles, ties and subnormals included.</p>
+    <div class="panel play">
+      <div>
+        <div class="field">
+          <label for="val">value</label>
+          <input type="text" id="val" value="0.30000000000000004" spellcheck="false" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="bits">significand bits kept: <span id="bitlabel" class="mono">24</span></label>
+          <input type="range" id="bits" min="1" max="53" value="24">
+        </div>
+        <div class="chips" id="chips"></div>
+        <p class="small" style="margin-top:12px">The highlighted bits are kept; the struck-through ones are discarded and the value is rounded to nearest, ties to even.</p>
+      </div>
+      <div>
+        <dl class="readout">
+          <div class="row"><dt>stored</dt><dd id="out-orig"></dd></div>
+          <div class="row"><dt>read back</dt><dd id="out-round"></dd></div>
+          <div class="row"><dt>rel. error</dt><dd id="out-err"></dd></div>
+          <div class="row"><dt>matches</dt><dd id="out-fmt"></dd></div>
+        </dl>
+        <div style="margin-top:14px">
+          <div class="filename"><span>IEEE 754 binary64 significand</span></div>
+          <div class="bits" id="out-bits"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RESULT ============ -->
+  <section>
+    <h2>What came back</h2>
+    <p>Grid's coarse Dirac stencil, rounded in storage, then CG against the rounded operator with the answer judged against an exact second copy of it. Twelve formats, two right-hand-side cases, four A100s.</p>
+
+    <div class="panel">
+      <figure>
+        <div class="legend">
+          <span><i class="swatch" style="background:var(--s1)"></i> δ — relative L2 change in the stencil</span>
+          <span><i class="swatch" style="background:var(--s2)"></i> true residual, judged against the exact operator</span>
+        </div>
+        <div class="chartbox" id="box-a"><svg id="chart-a" viewBox="0 0 720 320" role="img" aria-label="Rounding error and attainable residual against significand bits, logarithmic"></svg></div>
+        <figcaption>Both fall as 2<sup>−k</sup> over six decades. The dashed line is the fp64 answer, 3.1×10<sup>−9</sup>: where the orange curve leaves it — around 30 bits — is the knee for reproducing the fp64 result at a 10<sup>−8</sup> tolerance.</figcaption>
+      </figure>
+    </div>
+
+    <div class="panel">
+      <figure>
+        <div class="chartbox" id="box-b"><svg id="chart-b" viewBox="0 0 720 150" role="img" aria-label="CG iteration count against significand bits, flat at five"></svg></div>
+        <figcaption><strong>The same runs, same x axis.</strong> Five iterations at every format, down to eight significand bits. The coarse operator is rate-limiting, not accuracy-limiting: rounding it changes which problem is solved, not how long solving takes. In HDCG it lives inside a preconditioner, where the fine operator fixes the answer — so this is the column that bears on 16-bit stencil storage.</figcaption>
+      </figure>
+    </div>
+
+    <details>
+      <summary>Show the numbers</summary>
+      <div class="tablewrap" style="margin-top:12px"><table id="datatable"></table></div>
+    </details>
+
+    <div class="note">
+      <p><strong>fp16 is absent from both charts on purpose.</strong> It gave δ = 1.000 exactly — every stencil entry underflowed its 5-bit exponent and the operator rounded to zero. That is a failure of exponent range, not of significand bits, so plotting it against a significand-bit axis would misattribute it. bf16, with <em>three fewer</em> significand bits but fp32's exponent range, behaved exactly like the 8-bit virtual format.</p>
+    </div>
+
+    <div class="caveat">
+      <strong>Preliminary, and not physics.</strong> Free field (unit gauge), random subspace, nbasis 20, Ls 8, 16³×32, CG tolerance 10<sup>−8</sup>. The gauge configuration for the real study has not arrived, so this exercises the machinery rather than an ensemble. Every JSON record carries all of those fields so a cheap run cannot later be read as a physics one. Two independent right-hand-side cases agree to three digits.
+    </div>
+  </section>
+
+  <footer class="page">
+    <span>Mark Adams · LBNL · mfadams@lbl.gov</span>
+    <span>Grid develop 865c338d · parsimony/casestudies/hdcg/</span>
+  </footer>
+</div>
+
+<script>
+// ---------------------------------------------------------------- pipeline
+const STAGES = [
+  {
+    n: "1", who: "Parsimony", cls: "py", tab: "Choose a width",
+    title: "The search proposes a configuration",
+    text: "A ladder of virtual widths — float64's exponent range with k significand bits — plus the real storage formats for the headline. The search walks it; nothing here knows what Grid is.",
+    note: "src/parsimony/formats.py, casestudies/hdcg/grid_eval.py",
+    file: "grid_eval.py", lang: "python",
+    code: `<span class="c"># Virtual widths: float64 exponent, k significand bits.  The study asks</span>
+<span class="c"># "how many bits", so the search runs on this ladder; the named formats</span>
+<span class="c"># below are evaluated afterwards, where the answer must name a real layout.</span>
+LADDER = tuple(virtual(k) <span class="k">for</span> k <span class="k">in</span> (53, 40, 30, 24, 16, 11, 8))
+
+<span class="c">#: Reported, not searched: real formats at (or near) the knee.</span>
+STORAGE_RUNGS = (FP32, TF32, FP16, BF16)
+
+<span class="c">#: The preconditioner inputs the driver can round.  The fine operator is</span>
+<span class="c">#: never rounded, which keeps the true residual an independent check.</span>
+VARIABLES = (<span class="k">"subspace"</span>, <span class="k">"stencil"</span>, <span class="k">"evec"</span>)`
+  },
+  {
+    n: "2", who: "Parsimony", cls: "py", tab: "Hand it to Grid",
+    title: "One binary serves every configuration",
+    text: "The formats arrive as command-line arguments, so no probe costs a rebuild — that is what Caps(needs_rebuild=False) buys. Every probe is memoized and appended to a JSONL log, because an allocation can die mid-search and a solve is expensive.",
+    note: "A search runs inside one allocation as a Python loop calling srun, so queue time is paid once.",
+    file: "grid_eval.py", lang: "python",
+    code: `<span class="k">def</span> _command(self, config, case, json_path):
+    cmd = list(self.launcher) + [self.binary] + list(self.grid_args)
+    <span class="k">for</span> v <span class="k">in</span> VARIABLES:
+        <span class="k">if</span> v <span class="k">in</span> config:
+            cmd += [<span class="k">f"--round-{v}"</span>, _spec(config[v])]
+    cmd += [<span class="k">"--case"</span>, str(case), <span class="k">"--json"</span>, str(json_path)]
+    <span class="k">return</span> cmd
+
+<span class="c"># srun ... Test_coarse_bits --round-stencil v16 --case 0 --json out.json</span>`
+  },
+  {
+    n: "3", who: "Grid", cls: "cc", tab: "Build the operator",
+    title: "Coarsen twice: one to degrade, one to judge with",
+    text: "Both coarse operators come from the same aggregation, so they are identical before rounding. Keeping the exact one is the whole point: the rounded operator converges accurately to its own, different, solution, so its own residual says nothing about accuracy.",
+    note: "An unrecognised format aborts rather than defaulting — a typo in a sweep script must not quietly produce an fp64 point labelled bf16.",
+    file: "Test_coarse_bits.cc", lang: "C++ / CUDA",
+    code: `Parsimony::RoundSpec spec = Parsimony::ROUND_OFF;
+<span class="k">if</span> ( GridCmdOptionExists(argv,argv+argc,<span class="k">"--round-stencil"</span>) ){
+  spec_name = GridCmdOptionPayload(argv,argv+argc,<span class="k">"--round-stencil"</span>);
+  <span class="k">if</span> ( !Parsimony::parse_round_spec(spec_name.c_str(),spec) ) GRID_ASSERT(0);
+}
+
+<span class="c">// Two coarsenings of the same operator from the same aggregation:</span>
+<span class="c">// one to degrade, one to judge with.</span>
+LittleDiracOperator LittleDiracOp (geom,FGrid,Coarse5d);
+LittleDiracOperator LittleDiracRef(geom,FGrid,Coarse5d);
+LittleDiracOp .CoarsenOperator(HOA,Aggregates);
+LittleDiracRef.CoarsenOperator(HOA,Aggregates);`
+  },
+  {
+    n: "4", who: "Grid", cls: "cc", tab: "Round on the GPU",
+    title: "Snap every stored double to the target format, in place",
+    text: "Rounding every double in a vobj rounds the real and imaginary parts of every SIMD lane, which is what per-real-component means for a ComplexD field. Arithmetic afterwards is untouched fp64. The return value is the relative L2 change — the positive check that rounding actually happened.",
+    note: "A hook attached to the wrong object yields a flat curve indistinguishable from \"this input is free\". A zero change where rounding was requested stops the search.",
+    file: "round_field.h", lang: "C++ / CUDA",
+    code: `<span class="k">template</span> &lt;<span class="k">class</span> vobj&gt;
+<span class="k">double</span> RoundField(Grid::Lattice&lt;vobj&gt; &amp;field, <span class="k">const</span> RoundSpec &amp;spec) {
+  <span class="c">// autoView and accelerator_for are macros expanding to unqualified</span>
+  <span class="c">// Grid names, which will not resolve from namespace Parsimony.</span>
+  <span class="k">using namespace</span> Grid;
+  static_assert(IsDoubleScalar&lt;<span class="k">typename</span> vobj::scalar_type&gt;::value,
+                <span class="k">"RoundField: double-precision fields only"</span>);
+  <span class="k">if</span> (spec.identity()) <span class="k">return</span> 0.0;
+
+  <span class="k">const int</span> words = (<span class="k">int</span>)(<span class="k">sizeof</span>(vobj) / <span class="k">sizeof</span>(<span class="k">double</span>));
+  {
+    autoView(view, field, AcceleratorWrite);
+    accelerator_for(ss, nsite, 1, {
+      <span class="k">double</span> *p = (<span class="k">double</span> *)&amp;view[ss];
+      <span class="k">for</span> (<span class="k">int</span> w = 0; w &lt; words; w++) p[w] = round_bits(p[w], spec);
+    });
+  }
+  ...  <span class="c">// returns || before - after || / || before ||</span>
+}`
+  },
+  {
+    n: "5", who: "Grid", cls: "cc", tab: "Solve and judge",
+    title: "Converge with the degraded operator, judge with the exact one",
+    text: "CG runs against the rounded stencil. Then the exact copy is applied to the answer to get a residual that the rounding cannot flatter. This is the rule the Newton study had to be taught by failing: below a precision threshold a solver's own stopping test fires on its own rounding trajectory.",
+    note: "iterations measure the rate cost; true_resid measures the accuracy floor. They answer different questions and this run separates them.",
+    file: "Test_coarse_bits.cc", lang: "C++ / CUDA",
+    code: `ConjugateGradient&lt;CoarseVector&gt; CG(1.0e-8,10000,<span class="k">false</span>);
+CG(CoarseOp,c_src,c_res);            <span class="c">// rounded operator</span>
+
+<span class="c">// Judge with the exact operator.  The rounded one converges to its</span>
+<span class="c">// own answer, so its own residual says nothing about accuracy.</span>
+CoarseOpRef.HermOp(c_res,c_chk);
+c_err = c_chk - c_src;
+<span class="k">const</span> RealD true_resid = sqrt(norm2(c_err)/norm2(c_src));
+
+fprintf(fp,<span class="k">"{\\"converged\\": %s, \\"iterations\\": %d,\\n"</span>, ...);
+fprintf(fp,<span class="k">" \\"true_resid\\": %.17g, \\"delta\\": {\\"stencil\\": %.17g}\\n}"</span>, ...);`
+  },
+  {
+    n: "6", who: "Parsimony", cls: "py", tab: "Score it",
+    title: "Score, then propose the next configuration",
+    text: "The criterion is pluggable because it is not a detail. For an iterative method, relative error against an fp64 run measures bit-reproduction of a rounding trajectory rather than solution quality — so the criterion is convergence within an iteration budget, and precision trades against cost.",
+    note: "In this run the iteration column never moved, so the accuracy floor carried the signal. That is the rate-limiting / accuracy-limiting split, measured.",
+    file: "grid_eval.py", lang: "python",
+    code: `<span class="k">def</span> _verify_rounding(self, config, probe):
+    <span class="k">"""A variable asked to round must report a non-zero change."""</span>
+    <span class="k">for</span> v <span class="k">in</span> VARIABLES:
+        fmt = config.get(v)
+        <span class="k">if</span> fmt <span class="k">is None or</span> fmt.precision &gt;= 53: <span class="k">continue</span>
+        <span class="k">if</span> probe.delta.get(v) == 0.0:
+            <span class="k">raise</span> RoundingNoOp(
+                <span class="k">f"{v} at {fmt.name}: rounding changed nothing. The hook "</span>
+                <span class="k">"is not on the value the solve consumes."</span>)
+
+<span class="k">def</span> evaluate(self, config) -&gt; Result:
+    outputs = self._cached_outputs(full)
+    passed, score, meta = self.criterion.accept(outputs)
+    <span class="k">return</span> Result(dict(full), float(score), bool(passed), ...)`
+  }
+];
+
+const tablist = document.querySelector(".stages");
+STAGES.forEach((s, i) => {
+  const b = document.createElement("button");
+  b.className = "stage"; b.type = "button"; b.setAttribute("role", "tab");
+  b.setAttribute("aria-selected", i === 0 ? "true" : "false");
+  b.id = "stage-" + i;
+  b.innerHTML = '<span class="n">' + s.n + '</span><span>' + s.tab +
+                '</span><span class="who ' + s.cls + '">' + s.who + '</span>';
+  b.addEventListener("click", () => select(i));
+  tablist.appendChild(b);
+});
+function select(i) {
+  const s = STAGES[i];
+  document.querySelectorAll(".stage").forEach((b, j) =>
+    b.setAttribute("aria-selected", j === i ? "true" : "false"));
+  document.getElementById("st-title").textContent = s.title;
+  document.getElementById("st-text").textContent = s.text;
+  document.getElementById("st-note").textContent = s.note;
+  document.getElementById("st-file").textContent = s.file;
+  document.getElementById("st-lang").textContent = s.lang;
+  document.getElementById("st-code").innerHTML = s.code;
+}
+select(0);
+
+// ---------------------------------------------------------------- rounding
+function frexp(x) {
+  if (x === 0 || !isFinite(x)) return [x, 0];
+  let e = Math.max(-1074, Math.floor(Math.log2(Math.abs(x))) + 1);
+  let m = x * Math.pow(2, -e);
+  while (Math.abs(m) >= 1) { m /= 2; e += 1; }
+  while (Math.abs(m) < 0.5) { m *= 2; e -= 1; }
+  return [m, e];
+}
+function rne(x) {                       // round half to even, as np.round does
+  const f = Math.floor(x);
+  const d = x - f;
+  if (d > 0.5) return f + 1;
+  if (d < 0.5) return f;
+  return (f % 2 === 0) ? f : f + 1;
+}
+function roundBits(a, precision, expBits) {
+  if (precision >= 53 && expBits >= 11) return a;
+  if (a === 0 || !isFinite(a)) return a;
+  const [m, e] = frexp(a);
+  const unbiased = e - 1;
+  const emax = Math.pow(2, expBits - 1) - 1, emin = 1 - emax, mant = precision - 1;
+  let y;
+  if (unbiased < emin) {
+    const q = Math.pow(2, emin - mant);
+    y = rne(a / q) * q;
+  } else {
+    const s = Math.pow(2, precision);
+    y = (rne(m * s) / s) * Math.pow(2, e);
+  }
+  const maxFinite = (2 - Math.pow(2, -mant)) * Math.pow(2, emax);
+  if (Math.abs(y) > maxFinite) y = a > 0 ? Infinity : -Infinity;
+  return y;
+}
+const FORMATS = [
+  { name: "fp64",   p: 53, e: 11 }, { name: "fp32", p: 24, e: 8 },
+  { name: "tf32",   p: 11, e: 8 },  { name: "fp16", p: 11, e: 5 },
+  { name: "bf16",   p: 8,  e: 8 },  { name: "fp8e4m3", p: 4, e: 4 }
+];
+const chips = document.getElementById("chips");
+FORMATS.forEach(f => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chip"; b.textContent = f.name;
+  b.addEventListener("click", () => {
+    document.getElementById("bits").value = f.p;
+    render(f.e);
+  });
+  chips.appendChild(b);
+});
+function mantissaBits(x) {
+  const buf = new DataView(new ArrayBuffer(8));
+  buf.setFloat64(0, x);
+  let s = "";
+  for (let i = 0; i < 8; i++) s += buf.getUint8(i).toString(2).padStart(8, "0");
+  return s.slice(12);                   // 52 mantissa bits
+}
+function render(expBits) {
+  const raw = document.getElementById("val").value;
+  const k = parseInt(document.getElementById("bits").value, 10);
+  document.getElementById("bitlabel").textContent = k;
+  const a = Number(raw);
+  const ok = raw.trim() !== "" && isFinite(a);
+  const eb = expBits || 11;
+  const y = ok ? roundBits(a, k, eb) : NaN;
+  document.getElementById("out-orig").textContent  = ok ? a.toPrecision(17) : "—";
+  document.getElementById("out-round").textContent = ok ? (isFinite(y) ? y.toPrecision(17) : String(y)) : "—";
+  const err = (ok && a !== 0) ? Math.abs((y - a) / a) : 0;
+  document.getElementById("out-err").textContent = ok
+    ? (err === 0 ? "0  (exact)" : err.toExponential(3) + "   ≈ 2^" + Math.log2(err).toFixed(1))
+    : "—";
+  const match = FORMATS.filter(f => f.p === k).map(f => f.name);
+  document.getElementById("out-fmt").textContent = match.length ? match.join(", ") : "v" + k;
+  if (ok && isFinite(a)) {
+    const bits = mantissaBits(a);
+    const keep = Math.max(0, Math.min(52, k - 1));
+    document.getElementById("out-bits").innerHTML =
+      '<span class="keep">' + bits.slice(0, keep) + '</span>' +
+      '<span class="drop">' + bits.slice(keep) + '</span>';
+  } else {
+    document.getElementById("out-bits").textContent = "—";
+  }
+}
+document.getElementById("val").addEventListener("input", () => render());
+document.getElementById("bits").addEventListener("input", () => render());
+render();
+
+// ---------------------------------------------------------------- charts
+const DATA = [
+  { bits: 8,  fmt: "v8 / bf16", delta: 1.78077847e-3,  resid: 1.19540644e-3, iters: 5 },
+  { bits: 10, fmt: "v10",       delta: 4.16602873e-4,  resid: 3.02422551e-4, iters: 5 },
+  { bits: 12, fmt: "v12",       delta: 1.04088130e-4,  resid: 7.47578461e-5, iters: 5 },
+  { bits: 16, fmt: "v16",       delta: 6.50791129e-6,  resid: 4.65425541e-6, iters: 5 },
+  { bits: 20, fmt: "v20",       delta: 4.06861661e-7,  resid: 2.92025640e-7, iters: 5 },
+  { bits: 24, fmt: "v24 / fp32",delta: 2.53934498e-8,  resid: 1.83357208e-8, iters: 5 },
+  { bits: 30, fmt: "v30",       delta: 3.97196398e-10, resid: 3.10003250e-9, iters: 5 },
+  { bits: 40, fmt: "v40",       delta: 3.88399649e-13, resid: 3.08902534e-9, iters: 5 },
+  { bits: 53, fmt: "fp64",      delta: 0,              resid: 3.08902308e-9, iters: 5 }
+];
+const FP64_FLOOR = 3.08902308e-9;
+const M = { l: 62, r: 96, t: 14, b: 40 };
+const W = 720;
+
+function xScale(bits, w) { return M.l + (bits - 6) / (55 - 6) * (w - M.l - M.r); }
+function mkSvg(id, h, yScale, yTicks, yFmt) {
+  const svg = document.getElementById(id);
+  svg.setAttribute("viewBox", "0 0 " + W + " " + h);
+  const ns = "http://www.w3.org/2000/svg";
+  const el = (n, a) => { const e = document.createElementNS(ns, n);
+    for (const k in a) e.setAttribute(k, a[k]); return e; };
+  // grid + y axis
+  yTicks.forEach(t => {
+    const y = yScale(t);
+    svg.appendChild(el("line", { x1: M.l, x2: W - M.r, y1: y, y2: y,
+      stroke: "var(--rule)", "stroke-width": 1 }));
+    const lab = el("text", { x: M.l - 9, y: y + 4, "text-anchor": "end",
+      fill: "var(--muted)", "font-size": 11, "font-family": "var(--mono)" });
+    lab.textContent = yFmt(t); svg.appendChild(lab);
+  });
+  // x axis
+  [8, 12, 16, 20, 24, 30, 40, 53].forEach(b => {
+    const x = xScale(b, W);
+    const lab = el("text", { x: x, y: h - M.b + 20, "text-anchor": "middle",
+      fill: "var(--muted)", "font-size": 11, "font-family": "var(--mono)" });
+    lab.textContent = b; svg.appendChild(lab);
+  });
+  const xt = el("text", { x: (M.l + W - M.r) / 2, y: h - 2, "text-anchor": "middle",
+    fill: "var(--muted)", "font-size": 12 });
+  xt.textContent = "significand bits stored";
+  svg.appendChild(xt);
+  return { svg, el };
+}
+
+// ---- chart A: log scale
+(function () {
+  const h = 320, top = M.t, bot = h - M.b;
+  const lo = -13, hi = -2;
+  const yA = v => bot - (Math.log10(v) - lo) / (hi - lo) * (bot - top);
+  const ticks = [1e-13, 1e-11, 1e-9, 1e-7, 1e-5, 1e-3];
+  const { svg, el } = mkSvg("chart-a", h, yA, ticks,
+    t => "1e" + Math.round(Math.log10(t)));
+
+  // fp64 floor reference
+  svg.appendChild(el("line", { x1: M.l, x2: W - M.r, y1: yA(FP64_FLOOR), y2: yA(FP64_FLOOR),
+    stroke: "var(--muted)", "stroke-width": 1.5, "stroke-dasharray": "5 4", opacity: .75 }));
+  const fl = el("text", { x: W - M.r + 8, y: yA(FP64_FLOOR) + 4, fill: "var(--muted)",
+    "font-size": 11, "font-family": "var(--mono)" });
+  fl.textContent = "fp64 answer"; svg.appendChild(fl);
+
+  const series = [
+    { key: "delta", color: "var(--s1)", label: "δ", pts: DATA.filter(d => d.delta > 0) },
+    { key: "resid", color: "var(--s2)", label: "resid", pts: DATA }
+  ];
+  series.forEach(s => {
+    const d = s.pts.map((p, i) => (i ? "L" : "M") + xScale(p.bits, W) + "," + yA(p[s.key])).join(" ");
+    svg.appendChild(el("path", { d: d, fill: "none", stroke: s.color, "stroke-width": 2,
+      "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    s.pts.forEach(p => {
+      svg.appendChild(el("circle", { cx: xScale(p.bits, W), cy: yA(p[s.key]), r: 4.5,
+        fill: s.color, stroke: "var(--board)", "stroke-width": 2 }));
+    });
+    // direct label at the left end (fewest bits)
+    const first = s.pts[0];
+    const t = el("text", { x: xScale(first.bits, W) - 10, y: yA(first[s.key]) + 4,
+      "text-anchor": "end", fill: s.color, "font-size": 12, "font-weight": 600 });
+    t.textContent = s.label; svg.appendChild(t);
+  });
+  attachTip("box-a", "chart-a", h, d =>
+    d.fmt + "\nδ " + (d.delta ? d.delta.toExponential(2) : "0") +
+    "\nresid " + d.resid.toExponential(2));
+})();
+
+// ---- chart B: linear, flat
+(function () {
+  const h = 150, top = M.t, bot = h - M.b;
+  const yB = v => bot - (v / 8) * (bot - top);
+  const { svg, el } = mkSvg("chart-b", h, yB, [0, 4, 8], t => t);
+  const d = DATA.map((p, i) => (i ? "L" : "M") + xScale(p.bits, W) + "," + yB(p.iters)).join(" ");
+  svg.appendChild(el("path", { d: d, fill: "none", stroke: "var(--s1)", "stroke-width": 2 }));
+  DATA.forEach(p => svg.appendChild(el("circle", { cx: xScale(p.bits, W), cy: yB(p.iters),
+    r: 4.5, fill: "var(--s1)", stroke: "var(--board)", "stroke-width": 2 })));
+  const t = el("text", { x: W - M.r + 8, y: yB(5) + 4, fill: "var(--ink)",
+    "font-size": 12, "font-weight": 600 });
+  t.textContent = "5 iterations"; svg.appendChild(t);
+  attachTip("box-b", "chart-b", h, d => d.fmt + "\n" + d.iters + " iterations");
+})();
+
+function attachTip(boxId, svgId, h, fmt) {
+  const box = document.getElementById(boxId);
+  const svg = document.getElementById(svgId);
+  let tip = null;
+  svg.addEventListener("pointermove", ev => {
+    const r = svg.getBoundingClientRect();
+    const px = (ev.clientX - r.left) / r.width * W;
+    let best = null, bd = 1e9;
+    DATA.forEach(p => { const d = Math.abs(xScale(p.bits, W) - px);
+      if (d < bd) { bd = d; best = p; } });
+    if (!best || bd > 34) { if (tip) { tip.remove(); tip = null; } return; }
+    if (!tip) { tip = document.createElement("div"); tip.className = "tip"; box.appendChild(tip); }
+    tip.innerHTML = fmt(best).split("\n").join("<br>");
+    const lx = (ev.clientX - r.left);
+    tip.style.left = Math.min(Math.max(lx + 14, 0), r.width - tip.offsetWidth - 4) + "px";
+    tip.style.top = Math.max(4, ev.clientY - r.top - tip.offsetHeight - 12) + "px";
+  });
+  svg.addEventListener("pointerleave", () => { if (tip) { tip.remove(); tip = null; } });
+}
+
+// ---- table view
+(function () {
+  const t = document.getElementById("datatable");
+  t.innerHTML = "<thead><tr><th>stored as</th><th class='num'>sig. bits</th>" +
+    "<th class='num'>δ stencil</th><th class='num'>true resid</th><th class='num'>CG iters</th></tr></thead>";
+  const tb = document.createElement("tbody");
+  [...DATA].reverse().forEach(d => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = "<td>" + d.fmt + "</td><td class='num'>" + d.bits + "</td>" +
+      "<td class='num'>" + (d.delta ? d.delta.toExponential(2) : "0") + "</td>" +
+      "<td class='num'>" + d.resid.toExponential(2) + "</td>" +
+      "<td class='num'>" + d.iters + "</td>";
+    tb.appendChild(tr);
+  });
+  const tr = document.createElement("tr");
+  tr.innerHTML = "<td>fp16</td><td class='num'>11, 5 exp</td>" +
+    "<td class='num'>1.000</td><td class='num'>1.50e-4</td><td class='num'>5</td>";
+  tb.appendChild(tr);
+  t.appendChild(tb);
+})();
+</script>
+
+</body></html>
