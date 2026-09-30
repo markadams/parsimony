@@ -1,0 +1,67 @@
+diff --git a/Grid/algorithms/iterative/AdefMrhs.h b/Grid/algorithms/iterative/AdefMrhs.h
+index b18db98..3523de3 100644
+--- a/Grid/algorithms/iterative/AdefMrhs.h
++++ b/Grid/algorithms/iterative/AdefMrhs.h
+@@ -64,6 +64,12 @@ class TwoLevelCGmrhs : public LinearFunction<Field>
+   GridBase *grid;
+   MrhsCGAlgorithm Algorithm;
+ 
++  // Filled in upon completion, as ConjugateGradient does.  TrueResidual is the
++  // worst over the right hand sides, recomputed from the fine operator.
++  Integer IterationsToComplete;
++  RealD   TrueResidual;
++  bool    ConvergedFlag;
++
+   LinearOperatorBase<Field>    &_FineLinop;
+   MrhsPreconditioner<Field>    &_Precon;
+   MultiRHSBlockCGLinalg<Field>  _BlockCGLinalg;
+@@ -77,6 +83,9 @@ class TwoLevelCGmrhs : public LinearFunction<Field>
+     Tolerance(tol),
+     MaxIterations(maxit),
+     Algorithm(alg),
++    IterationsToComplete(0),
++    TrueResidual(0.0),
++    ConvergedFlag(false),
+     _FineLinop(FineLinop),
+     _Precon(Precon)
+   {
+@@ -518,6 +527,9 @@ class TwoLevelCGmrhs : public LinearFunction<Field>
+ 	std::cout<<GridLogMessage<<"HDCG: mrhs fPcg : prec M1 "<<M1Timer.Elapsed()<<std::endl;;
+ 	_Precon.ReportTimers("HDCG: mrhs fPcg : ");
+ 
++	IterationsToComplete = k;
++	ConvergedFlag        = true;
++	TrueResidual         = 0.0;
+ 	for(int rhs=0;rhs<nrhs;rhs++){
+ 	  _FineLinop.HermOp(x[rhs],mmp[rhs][0]);			  
+ 	  Field tmp(grid);
+@@ -528,6 +540,7 @@ class TwoLevelCGmrhs : public LinearFunction<Field>
+ 	  RealD  srcnorm = sqrt(norm2(src[rhs]));
+ 	  RealD  tmpnorm = sqrt(norm2(tmp));
+ 	  RealD  true_residual = tmpnorm/srcnorm;
++	  if ( true_residual > TrueResidual ) TrueResidual = true_residual;
+ 	  std::cout<<GridLogMessage
+ 		   <<"HDCG: true residual ["<<rhs<<"] is "<<true_residual
+ 		   <<" solution "<<xnorm
+@@ -540,11 +553,20 @@ class TwoLevelCGmrhs : public LinearFunction<Field>
+       
+     }
+     HDCGTimer.Stop();
++    IterationsToComplete = MaxIterations;
++    ConvergedFlag        = false;
+     std::cout<<GridLogMessage<<"HDCG: not converged "<<HDCGTimer.Elapsed()<<std::endl;
++    TrueResidual = 0.0;
+     for(int rhs=0;rhs<nrhs;rhs++){
++      _FineLinop.HermOp(x[rhs],mmp[rhs][0]);
++      Field tmp(grid);
++      axpy(tmp,-1.0,src[rhs],mmp[rhs][0]);
+       RealD  xnorm   = sqrt(norm2(x[rhs]));
+       RealD  srcnorm = sqrt(norm2(src[rhs]));
+-      std::cout<<GridLogMessage<<"HDCG: non-converged solution "<<xnorm<<" source "<<srcnorm<<std::endl;
++      RealD  true_residual = sqrt(norm2(tmp))/srcnorm;
++      if ( true_residual > TrueResidual ) TrueResidual = true_residual;
++      std::cout<<GridLogMessage<<"HDCG: non-converged solution "<<xnorm<<" source "<<srcnorm
++	       <<" true residual "<<true_residual<<std::endl;
+     }
+   }
+ 

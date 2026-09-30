@@ -1,0 +1,119 @@
+######### stencil=v53 case=0 #########
+Grid : Message : 0.053158 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 53.851001 s : PARSIMONY result stencil v53 iterations 5 cg_resid 3.08902308e-09 true_resid 3.08902308e-09 delta 0
+Grid : Message : 53.853457 s : PARSIMONY wrote results/sw_v53_c0.json
+######### stencil=v40 case=0 #########
+Grid : Message : 0.059593 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 53.985028 s : PARSIMONY rounded stencil to v40 over 81 points (+0 dag), worst relative L2 change 3.88399649e-13
+Grid : Message : 54.017229 s : PARSIMONY result stencil v40 iterations 5 cg_resid 3.08902308e-09 true_resid 3.08902534e-09 delta 3.88399649e-13
+Grid : Message : 54.018922 s : PARSIMONY wrote results/sw_v40_c0.json
+######### stencil=v30 case=0 #########
+Grid : Message : 0.058556 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 53.810203 s : PARSIMONY rounded stencil to v30 over 81 points (+0 dag), worst relative L2 change 3.97196398e-10
+Grid : Message : 53.833996 s : PARSIMONY result stencil v30 iterations 5 cg_resid 3.08902308e-09 true_resid 3.1000325e-09 delta 3.97196398e-10
+Grid : Message : 53.836031 s : PARSIMONY wrote results/sw_v30_c0.json
+######### stencil=v24 case=0 #########
+Grid : Message : 0.060075 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 53.769733 s : PARSIMONY rounded stencil to v24 over 81 points (+0 dag), worst relative L2 change 2.53934498e-08
+Grid : Message : 53.793064 s : PARSIMONY result stencil v24 iterations 5 cg_resid 3.08902314e-09 true_resid 1.83357208e-08 delta 2.53934498e-08
+Grid : Message : 53.795279 s : PARSIMONY wrote results/sw_v24_c0.json
+######### stencil=v20 case=0 #########
+Grid : Message : 0.050931 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 54.143605 s : PARSIMONY rounded stencil to v20 over 81 points (+0 dag), worst relative L2 change 4.06861661e-07
+Grid : Message : 54.167708 s : PARSIMONY result stencil v20 iterations 5 cg_resid 3.08901811e-09 true_resid 2.9202564e-07 delta 4.06861661e-07
+Grid : Message : 54.169507 s : PARSIMONY wrote results/sw_v20_c0.json
+######### stencil=v16 case=0 #########
+Grid : Message : 0.050890 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 53.946190 s : PARSIMONY rounded stencil to v16 over 81 points (+0 dag), worst relative L2 change 6.50791129e-06
+Grid : Message : 53.980162 s : PARSIMONY result stencil v16 iterations 5 cg_resid 3.08904525e-09 true_resid 4.65425541e-06 delta 6.50791129e-06
+Grid : Message : 53.981903 s : PARSIMONY wrote results/sw_v16_c0.json
+######### stencil=v12 case=0 #########
+Grid : Message : 0.052398 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 53.789769 s : PARSIMONY rounded stencil to v12 over 81 points (+0 dag), worst relative L2 change 0.00010408813
+Grid : Message : 53.815776 s : PARSIMONY result stencil v12 iterations 5 cg_resid 3.08832574e-09 true_resid 7.47578461e-05 delta 0.00010408813
+Grid : Message : 53.817358 s : PARSIMONY wrote results/sw_v12_c0.json
+######### stencil=v10 case=0 #########
+Grid : Message : 0.052033 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 54.470471 s : PARSIMONY rounded stencil to v10 over 81 points (+0 dag), worst relative L2 change 0.000416602873
+Grid : Message : 54.494432 s : PARSIMONY result stencil v10 iterations 5 cg_resid 3.09304649e-09 true_resid 0.000302422551 delta 0.000416602873
+Grid : Message : 54.496311 s : PARSIMONY wrote results/sw_v10_c0.json
+######### stencil=v8 case=0 #########
+Grid : Message : 0.060356 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 53.838609 s : PARSIMONY rounded stencil to v8 over 81 points (+0 dag), worst relative L2 change 0.00178077847
+Grid : Message : 53.857011 s : PARSIMONY result stencil v8 iterations 5 cg_resid 3.11609049e-09 true_resid 0.00119540644 delta 0.00178077847
+Grid : Message : 53.859033 s : PARSIMONY wrote results/sw_v8_c0.json
+######### stencil=fp32 case=0 #########
+Grid : Message : 0.059754 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 53.794133 s : PARSIMONY rounded stencil to fp32 over 81 points (+0 dag), worst relative L2 change 2.53934498e-08
+Grid : Message : 53.820415 s : PARSIMONY result stencil fp32 iterations 5 cg_resid 3.08902314e-09 true_resid 1.83357208e-08 delta 2.53934498e-08
+Grid : Message : 53.822119 s : PARSIMONY wrote results/sw_fp32_c0.json
+######### stencil=bf16 case=0 #########
+Grid : Message : 0.053188 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 53.767284 s : PARSIMONY rounded stencil to bf16 over 81 points (+0 dag), worst relative L2 change 0.00178077847
+Grid : Message : 53.791143 s : PARSIMONY result stencil bf16 iterations 5 cg_resid 3.11609049e-09 true_resid 0.00119540644 delta 0.00178077847
+Grid : Message : 53.793207 s : PARSIMONY wrote results/sw_bf16_c0.json
+######### stencil=fp16 case=0 #########
+Grid : Message : 0.057732 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 54.215360 s : PARSIMONY rounded stencil to fp16 over 81 points (+0 dag), worst relative L2 change 1
+Grid : Message : 54.241392 s : PARSIMONY result stencil fp16 iterations 5 cg_resid 3.08860741e-09 true_resid 0.000149951815 delta 1
+Grid : Message : 54.247107 s : PARSIMONY wrote results/sw_fp16_c0.json
+######### stencil=v53 case=1 #########
+Grid : Message : 0.053533 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 54.019541 s : PARSIMONY result stencil v53 iterations 5 cg_resid 3.08858674e-09 true_resid 3.08858673e-09 delta 0
+Grid : Message : 54.021685 s : PARSIMONY wrote results/sw_v53_c1.json
+######### stencil=v40 case=1 #########
+Grid : Message : 0.051769 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 53.898870 s : PARSIMONY rounded stencil to v40 over 81 points (+0 dag), worst relative L2 change 3.88399649e-13
+Grid : Message : 53.925768 s : PARSIMONY result stencil v40 iterations 5 cg_resid 3.08858674e-09 true_resid 3.0885869e-09 delta 3.88399649e-13
+Grid : Message : 53.927489 s : PARSIMONY wrote results/sw_v40_c1.json
+######### stencil=v30 case=1 #########
+Grid : Message : 0.051470 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 54.048067 s : PARSIMONY rounded stencil to v30 over 81 points (+0 dag), worst relative L2 change 3.97196398e-10
+Grid : Message : 54.072876 s : PARSIMONY result stencil v30 iterations 5 cg_resid 3.08858674e-09 true_resid 3.10060716e-09 delta 3.97196398e-10
+Grid : Message : 54.074566 s : PARSIMONY wrote results/sw_v30_c1.json
+######### stencil=v24 case=1 #########
+Grid : Message : 0.051320 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 54.063234 s : PARSIMONY rounded stencil to v24 over 81 points (+0 dag), worst relative L2 change 2.53934498e-08
+Grid : Message : 54.086833 s : PARSIMONY result stencil v24 iterations 5 cg_resid 3.08858681e-09 true_resid 1.83107128e-08 delta 2.53934498e-08
+Grid : Message : 54.088692 s : PARSIMONY wrote results/sw_v24_c1.json
+######### stencil=v20 case=1 #########
+Grid : Message : 0.052289 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 54.338584 s : PARSIMONY rounded stencil to v20 over 81 points (+0 dag), worst relative L2 change 4.06861661e-07
+Grid : Message : 54.405977 s : PARSIMONY result stencil v20 iterations 5 cg_resid 3.08858192e-09 true_resid 2.93413808e-07 delta 4.06861661e-07
+Grid : Message : 54.407757 s : PARSIMONY wrote results/sw_v20_c1.json
+######### stencil=v16 case=1 #########
+Grid : Message : 0.051510 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 54.116164 s : PARSIMONY rounded stencil to v16 over 81 points (+0 dag), worst relative L2 change 6.50791129e-06
+Grid : Message : 54.165486 s : PARSIMONY result stencil v16 iterations 5 cg_resid 3.08856661e-09 true_resid 4.63664369e-06 delta 6.50791129e-06
+Grid : Message : 54.167211 s : PARSIMONY wrote results/sw_v16_c1.json
+######### stencil=v12 case=1 #########
+Grid : Message : 0.052272 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 54.396200 s : PARSIMONY rounded stencil to v12 over 81 points (+0 dag), worst relative L2 change 0.00010408813
+Grid : Message : 54.420052 s : PARSIMONY result stencil v12 iterations 5 cg_resid 3.08832579e-09 true_resid 7.45068766e-05 delta 0.00010408813
+Grid : Message : 54.421796 s : PARSIMONY wrote results/sw_v12_c1.json
+######### stencil=v10 case=1 #########
+Grid : Message : 0.051006 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 54.385942 s : PARSIMONY rounded stencil to v10 over 81 points (+0 dag), worst relative L2 change 0.000416602873
+Grid : Message : 54.409670 s : PARSIMONY result stencil v10 iterations 5 cg_resid 3.09028818e-09 true_resid 0.000300968183 delta 0.000416602873
+Grid : Message : 54.411314 s : PARSIMONY wrote results/sw_v10_c1.json
+######### stencil=v8 case=1 #########
+Grid : Message : 0.051392 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 54.277868 s : PARSIMONY rounded stencil to v8 over 81 points (+0 dag), worst relative L2 change 0.00178077847
+Grid : Message : 54.296213 s : PARSIMONY result stencil v8 iterations 5 cg_resid 3.12127252e-09 true_resid 0.0011979202 delta 0.00178077847
+Grid : Message : 54.298397 s : PARSIMONY wrote results/sw_v8_c1.json
+######### stencil=fp32 case=1 #########
+Grid : Message : 0.051035 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 54.316406 s : PARSIMONY rounded stencil to fp32 over 81 points (+0 dag), worst relative L2 change 2.53934498e-08
+Grid : Message : 54.338051 s : PARSIMONY result stencil fp32 iterations 5 cg_resid 3.08858681e-09 true_resid 1.83107128e-08 delta 2.53934498e-08
+Grid : Message : 54.340449 s : PARSIMONY wrote results/sw_fp32_c1.json
+######### stencil=bf16 case=1 #########
+Grid : Message : 0.051010 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 54.187154 s : PARSIMONY rounded stencil to bf16 over 81 points (+0 dag), worst relative L2 change 0.00178077847
+Grid : Message : 54.211109 s : PARSIMONY result stencil bf16 iterations 5 cg_resid 3.12127252e-09 true_resid 0.0011979202 delta 0.00178077847
+Grid : Message : 54.212770 s : PARSIMONY wrote results/sw_bf16_c1.json
+######### stencil=fp16 case=1 #########
+Grid : Message : 0.053816 s : PARSIMONY WARNING: free field (unit gauge); bit counts are preliminary and not an ensemble result
+Grid : Message : 53.929801 s : PARSIMONY rounded stencil to fp16 over 81 points (+0 dag), worst relative L2 change 1
+Grid : Message : 53.959729 s : PARSIMONY result stencil fp16 iterations 5 cg_resid 3.08710977e-09 true_resid 0.000150412862 delta 1
+Grid : Message : 53.961405 s : PARSIMONY wrote results/sw_fp16_c1.json
+######### SWEEP DONE #########

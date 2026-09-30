@@ -1,0 +1,7 @@
+{"converged": true, "iterations": 5,
+ "true_resid": 4.6542554088693782e-06, "cg_resid": 3.0890452521952918e-09,
+ "t_setup": 53.519701, "t_solve": 0.028165, "case": 0,
+ "gauge": "free", "nbasis": 20, "Ls": 8, "subspace": "random",
+ "round": {"stencil": "v16"},
+ "delta": {"stencil": 6.5079112928407597e-06}
+}

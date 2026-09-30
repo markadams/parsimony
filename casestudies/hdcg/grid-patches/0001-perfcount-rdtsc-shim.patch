@@ -1,0 +1,14 @@
+diff --git a/Grid/perfmon/PerfCount.h b/Grid/perfmon/PerfCount.h
+index bad1181b..66dff9d1 100644
+--- a/Grid/perfmon/PerfCount.h
++++ b/Grid/perfmon/PerfCount.h
+@@ -51,8 +51,7 @@ Author: paboyle <paboyle@ph.ed.ac.uk>
+ #endif
+ #ifdef __x86_64__
+ #ifdef GRID_CUDA
+-accelerator_inline uint64_t __rdtsc(void) {  return 0; }
+-accelerator_inline uint64_t __rdpmc(int ) {  return 0; }
++#include <x86intrin.h>
+ #else
+ #include <x86intrin.h>
+ #endif

@@ -9,3 +9,5 @@ paper/*.blg
 paper/*.log
 paper/*.out
 paper/*.pdf
+casestudies/hdcg/hdcg-case*.json
+casestudies/hdcg/round_bits_probe
