@@ -155,6 +155,6 @@ ranks, the `select_gpu` wrapper and `MPICH_GPU_SUPPORT_ENABLED=1` — see
 
 ## Tree state at handoff
 
-All of `casestudies/hdcg/`, `tests/test_hdcg_round.py`, `tests/test_hdcg_eval.py`
-and the `.gitignore` change are **uncommitted** on HEAD `cf9d20b`. 104 tests
-pass. Commit only when Mark asks.
+Committed on `main`, not pushed: `5db5cd3` (case study: code, tests, results,
+patches), `ffdd50a` (material for Peter), `86681b7` (code tour, job scripts).
+104 tests pass. `.vscode/` is Mark's editor config and stays untracked.
