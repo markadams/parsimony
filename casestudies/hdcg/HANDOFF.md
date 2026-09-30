@@ -97,9 +97,11 @@ spectrum; RHS cases only vary the source.
    JSON record per point.
 5. Put `ranks`, `mpi` and the Grid commit into every JSON record — last time's
    records lacked them.
-6. Verify the v53/fp32 point reproduces the unmodified production solver's
+6. Drive the new driver through `grid_eval.py` rather than a shell loop — the
+   evaluator is tested but has never run against Grid for real.
+7. Verify the v53/fp32 point reproduces the unmodified production solver's
    iteration count exactly before running any sweep.
-7. Sweep: 3 configurations × 2 cases × the product ladder.
+8. Sweep: 3 configurations × 2 cases × the product ladder.
 
 ## Where things are
 
@@ -110,9 +112,11 @@ spectrum; RHS cases only vary the source.
 | Grid lattice wrapper | `casestudies/hdcg/round_field.h` |
 | working driver (coarse stencil) | `casestudies/hdcg/Test_coarse_bits.cc` |
 | blocked HDCG driver | `casestudies/hdcg/Test_hdcg_parsimony.cc` |
-| parsimony evaluator for Grid | `casestudies/hdcg/grid_eval.py` |
+| parsimony evaluator for Grid | `casestudies/hdcg/grid_eval.py` — tested only against a stand-in driver; it has never driven Grid on the machine (the published ladder came from the shell loop in `jobs/run_sweep.slurm`) |
+| job and build scripts | `casestudies/hdcg/jobs/` (copied from Perlmutter scratch) |
 | results, 24 JSON + log | `casestudies/hdcg/results/` |
 | questions for Peter, slides, walkthrough | `casestudies/hdcg/share/` |
+| code tour of every Grid change (interactive) | `share/grid-precision-hooks.html`, https://claude.ai/code/artifact/c0cae33e-6cba-453a-8cc2-ae46e4fa972c — regenerate with `python3 share/src/gen_hooks.py` after editing any file it quotes |
 | our two Grid patches (apply to `865c338d`) | `casestudies/hdcg/grid-patches/` |
 | Grid source + build | `/pscratch/sd/m/madams/Grid`, `/pscratch/sd/m/madams/Grid/build` — scratch is purged when idle; rebuild from `NOTES.md` + `grid-patches/` |
 | job scripts, run outputs | `/pscratch/sd/m/madams/hdcg/` |

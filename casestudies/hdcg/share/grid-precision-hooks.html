@@ -1,0 +1,330 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>[hidden]{display:none!important}</style></head><body>
+<title>Grid Precision Hooks</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --paper: #F2F3EF; --board: #FBFBF9; --sunk: #ECEEE9; --ink: #1B2230; --muted: #6E7583;
+    --rule: #D4D7D0; --accent: #34479B; --accent-soft: #E3E7F7; --jade: #2B7F69; --jade-soft: #DDEFE8;
+    --warn: #A65A1E; --warn-soft: #F6E8DC; --code-bg: #F4F5F1; --code-ink: #232A38;
+    --c-com: #6E7583; --c-str: #2B7F69; --c-kw: #34479B; --c-num: #A65A1E;
+    --d-add: #E3F1EA; --d-del: #F8E5E2; --d-hdr: #E3E7F7;
+    --display: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #12161E; --board: #1A1F2A; --sunk: #232935; --ink: #E6E8E3; --muted: #98A0AD;
+      --rule: #2C3340; --accent: #8C9BE8; --accent-soft: #232B4A; --jade: #5FBF9F; --jade-soft: #1E3A32;
+      --warn: #E0955A; --warn-soft: #3A2A1E; --code-bg: #161A23; --code-ink: #D7DBE4;
+      --c-com: #8A93A1; --c-str: #6FC7A8; --c-kw: #9AA8F0; --c-num: #E7A36C;
+      --d-add: #17322A; --d-del: #3A2022; --d-hdr: #232B4A;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #12161E; --board: #1A1F2A; --sunk: #232935; --ink: #E6E8E3; --muted: #98A0AD;
+    --rule: #2C3340; --accent: #8C9BE8; --accent-soft: #232B4A; --jade: #5FBF9F; --jade-soft: #1E3A32;
+    --warn: #E0955A; --warn-soft: #3A2A1E; --code-bg: #161A23; --code-ink: #D7DBE4;
+    --c-com: #8A93A1; --c-str: #6FC7A8; --c-kw: #9AA8F0; --c-num: #E7A36C;
+    --d-add: #17322A; --d-del: #3A2022; --d-hdr: #232B4A;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 16px;
+         line-height: 1.5; padding-block: 32px 56px; padding-inline: 20px; margin: 0; }
+  .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 28px; }
+  h1, h2, h3 { font-family: var(--display); margin: 0; line-height: 1.14; text-wrap: balance; }
+  h1 { font-size: 42px; font-weight: 600; }
+  h2 { font-size: 24px; font-weight: 600; }
+  p { margin: 0; max-width: 70ch; }
+  .lead { font-size: 18px; max-width: 64ch; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+  code { font-family: var(--mono); font-size: .9em; background: var(--sunk); padding: 1px 5px; border-radius: 3px; }
+
+  /* at a glance */
+  .glance { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .fact { background: var(--board); border: 1px solid var(--rule); padding: 14px 16px; display: grid; gap: 5px; align-content: start; }
+  .fact .k { font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .fact .v { font-size: 15px; }
+  .fact.answer { border-color: var(--warn); }
+  .fact button.link { all: unset; cursor: pointer; color: var(--accent); font-size: 14px; text-decoration: underline; text-underline-offset: 2px; }
+  .fact button.link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* architecture strip */
+  .arch { display: grid; grid-template-columns: 1fr 0.8fr 1.4fr; gap: 10px; }
+  @media (max-width: 820px) { .arch { grid-template-columns: 1fr; } }
+  .lane { background: var(--board); border: 1px solid var(--rule); padding: 12px; display: grid; gap: 7px; align-content: start; }
+  .lane h3 { font-size: 13px; font-family: var(--mono); font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .lane .sub { font-size: 12.5px; color: var(--muted); }
+  .node { all: unset; cursor: pointer; font-size: 13.5px; padding: 6px 9px; border: 1px solid var(--rule);
+          border-radius: 3px; background: var(--paper); display: flex; gap: 8px; align-items: center; }
+  .node:hover { border-color: var(--accent); }
+  .node:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .node[aria-current="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .node.lib { border-style: solid; border-left: 3px solid var(--warn); }
+
+  /* explorer */
+  .explorer { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 900px) { .explorer { grid-template-columns: 1fr; } }
+  nav { background: var(--board); border: 1px solid var(--rule); padding: 12px; display: grid; gap: 14px;
+        position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
+  @media (max-width: 900px) { nav { position: static; } }
+  .grp { display: grid; gap: 4px; }
+  .grp .gname { font-family: var(--mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+  .item { all: unset; cursor: pointer; font-size: 13.5px; line-height: 1.35; padding: 5px 7px; border-radius: 3px;
+          display: grid; grid-template-columns: 10px 1fr; gap: 8px; align-items: start; }
+  .item:hover { background: var(--sunk); }
+  .item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .item[aria-current="true"] { background: var(--accent-soft); color: var(--ink); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 5px; }
+
+  .panel { background: var(--board); border: 1px solid var(--rule); display: grid; min-width: 0; }
+  .phead { padding: 18px 20px 14px; display: grid; gap: 8px; border-bottom: 1px solid var(--rule); }
+  .meta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .file { font-family: var(--mono); font-size: 12px; color: var(--muted); word-break: break-all; }
+  .chip { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; padding: 2px 8px; border-radius: 3px; white-space: nowrap; }
+  .st-ran      { background: var(--jade-soft); color: var(--jade); }
+  .st-tested   { background: var(--accent-soft); color: var(--accent); }
+  .st-blocked  { background: var(--warn-soft); color: var(--warn); }
+  .st-proposed { background: transparent; color: var(--muted); border: 1px dashed var(--muted); }
+  .st-pseudo   { background: var(--sunk); color: var(--muted); }
+  .d-ran { background: var(--jade); } .d-tested { background: var(--accent); } .d-blocked { background: var(--warn); }
+  .d-proposed { background: transparent; border: 1.5px dashed var(--muted); } .d-pseudo { background: var(--muted); }
+  .prose { padding: 14px 20px 16px; display: grid; gap: 10px; }
+  .prose .what { font-size: 15.5px; }
+  .prose .why { font-size: 14.5px; color: var(--muted); }
+
+  .code { background: var(--code-bg); border-top: 1px solid var(--rule); overflow-x: auto; }
+  .code table { border-collapse: collapse; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; min-width: 100%; }
+  .code td { padding: 0 14px 0 0; white-space: pre; vertical-align: top; color: var(--code-ink); }
+  .code td.ln { color: var(--muted); text-align: right; padding: 0 12px 0 14px; user-select: none; opacity: .7;
+                font-variant-numeric: tabular-nums; border-right: 1px solid var(--rule); }
+  .code td.src { padding-left: 14px; }
+  .code tr:first-child td { padding-top: 12px; } .code tr:last-child td { padding-bottom: 14px; }
+  .com { color: var(--c-com); font-style: italic; } .str { color: var(--c-str); }
+  .kw { color: var(--c-kw); font-weight: 500; } .num { color: var(--c-num); }
+  tr.add td.src { background: var(--d-add); } tr.del td.src { background: var(--d-del); }
+  tr.hdr td.src { background: var(--d-hdr); color: var(--muted); }
+
+  .pfoot { padding: 10px 20px; border-top: 1px solid var(--rule); display: flex; flex-wrap: wrap; gap: 10px;
+           align-items: center; justify-content: space-between; font-size: 13px; color: var(--muted); }
+  .btn { font: 500 13px var(--body); padding: 6px 12px; border-radius: 3px; cursor: pointer;
+         background: var(--board); color: var(--ink); border: 1px solid var(--rule); }
+  .btn:hover { border-color: var(--accent); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn.primary { background: var(--accent); color: var(--board); border-color: var(--accent); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--muted); }
+  .legend span { display: inline-flex; gap: 6px; align-items: center; }
+  footer.page { border-top: 1px solid var(--rule); padding-top: 12px; font-family: var(--mono); font-size: 12px;
+                color: var(--muted); display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; }
+  a { color: var(--accent); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:10px">
+    <div class="eyebrow">Parsimony × Grid · develop 865c338d · Perlmutter, 4× A100</div>
+    <h1>Grid Precision Hooks</h1>
+    <p class="lead">Everything Parsimony adds to Grid, everything it changes in Grid, and everything that passes between the two. Code marked <em>ran</em> or <em>tested</em> is read from the committed files by line number; code marked <em>proposed</em> is not written yet, and says so.</p>
+  </header>
+
+  <section class="glance" aria-label="At a glance">
+    <div class="fact"><span class="k">Grid library</span><span class="v">Two small patches: a build fix and an accessor. Neither touches numerics.</span></div>
+    <div class="fact"><span class="k">Our code in the driver</span><span class="v"><code>round_bits.h</code> (135 lines), <code>round_field.h</code> (107 lines), and one 23-line hook.</span></div>
+    <div class="fact"><span class="k">The seam</span><span class="v">Formats go in as command-line flags; one JSON record comes back. No probe costs a rebuild.</span></div>
+    <div class="fact answer"><span class="k">Does Grid loop to amortise setup?</span><span class="v">Not yet. Each point is one process, and setup is 99.95% of it. <button class="link" data-go="a-today">See the numbers</button> · <button class="link" data-go="a-loop">the proposed loop</button></span></div>
+  </section>
+
+  <section style="display:grid;gap:10px" aria-label="Architecture">
+    <h2>How one probe travels</h2>
+    <div class="arch">
+      <div class="lane"><h3>Parsimony · Python</h3><span class="sub">chooses a configuration, scores the result</span><div id="lane-py" style="display:grid;gap:6px"></div></div>
+      <div class="lane"><h3>The seam</h3><span class="sub">argv in, JSON out</span><div id="lane-seam" style="display:grid;gap:6px"></div></div>
+      <div class="lane"><h3>Grid · C++/CUDA on the GPU</h3><span class="sub">our driver, with two patches to the library underneath</span><div id="lane-grid" style="display:grid;gap:6px"></div></div>
+    </div>
+  </section>
+
+  <section class="explorer" aria-label="Code explorer">
+    <nav id="nav" aria-label="Sections"></nav>
+    <article class="panel" id="panel" aria-live="polite">
+      <div class="phead">
+        <div class="meta"><span id="p-chip" class="chip"></span><span id="p-file" class="file"></span></div>
+        <h2 id="p-title"></h2>
+      </div>
+      <div class="prose"><p id="p-what" class="what"></p><p id="p-why" class="why"></p></div>
+      <div class="code" id="p-code"></div>
+      <div class="pfoot">
+        <span id="p-trace">Pick any section, or follow one probe from start to finish.</span>
+        <span style="display:flex;gap:8px">
+          <button class="btn" id="btn-prev" type="button">← Previous</button>
+          <button class="btn primary" id="btn-next" type="button">Trace one probe →</button>
+        </span>
+      </div>
+    </article>
+  </section>
+
+  <div class="legend" aria-label="Status legend">
+    <span><i class="dot d-ran"></i> ran on the A100s</span>
+    <span><i class="dot d-tested"></i> tested locally</span>
+    <span><i class="dot d-blocked"></i> compiled, blocked</span>
+    <span><i class="dot d-proposed"></i> proposed, not written</span>
+    <span><i class="dot d-pseudo"></i> pseudo-code of real code</span>
+  </div>
+
+  <footer class="page">
+    <span>Mark Adams · LBNL · mfadams@lbl.gov</span>
+    <span>parsimony/casestudies/hdcg/ · results and walkthrough: <a href="https://claude.ai/code/artifact/7d0d3321-d14e-49cd-9a49-693267fa8c6b">Parsimony on Grid</a></span>
+  </footer>
+</div>
+
+<script>
+const ITEMS = [{"id": "py-search", "group": "Parsimony (Python)", "title": "The search that drives Grid", "status": "pseudo", "file": "casestudies/hdcg/grid_eval.py", "start": null, "lang": "py", "code": "# Pseudo-code of grid_eval.run() -- the search that drives Grid.\n\nreference = run_driver({every variable: v53})       # calibrate the budget\nfor slack in [0, 0.1, 0.25]:                         # Pareto curve: bits vs iterations\n    criterion = IterationBudget(slack)               # re-score cached runs, no new solves\n\n    # 1. Prefilter: each variable alone, others at fp64.  Bisect the ladder.\n    for var in variables:\n        floor[var] = lowest k such that run_driver({var: k}) passes\n\n    # 2. Delta debugging from those floors: mixed configurations.\n    config = PrecisionDDMin(ladder).search(floors, run_driver)\n    record(slack, config, run_driver(config))\n\n\ndef run_driver(config):\n    if config in cache:                              # probes repeat; solves cost\n        return cache[config]\n    for case in cases:\n        srun Test_coarse_bits  --round-<var> <fmt> ...  --case <case>  --json out.json\n        rec = read(out.json)          # no file   -> error, not \"diverged\"\n        for var rounded in config:\n            assert rec.delta[var] > 0 # zero      -> RoundingNoOp, stop\n    cache[config] = scores(recs)      # converged, iterations, true_resid\n    return criterion.accept(cache[config])", "what": "Parsimony calibrates on an all-fp64 run, establishes one floor per variable, then searches mixed configurations with delta debugging. Every probe goes through run_driver, which launches the Grid binary once per case.", "why": "Pseudo-code of the real `run()` at grid_eval.py:271. This loop is tested end to end against a stand-in driver with planted knees, which it recovers exactly. It has not yet driven Grid on the machine: the published ladder came from the shell loop under The seam."}, {"id": "py-command", "group": "Parsimony (Python)", "title": "Building one probe's command line", "status": "tested", "file": "casestudies/hdcg/grid_eval.py", "start": 140, "lang": "py", "code": "    def _command(self, config: Config, case: int, json_path: Path) -> list[str]:\n        cmd = list(self.launcher) + [self.binary] + list(self.grid_args)\n        for v in VARIABLES:\n            if v in config:\n                cmd += [f\"--round-{v}\", _spec(config[v])]\n        cmd += [\"--case\", str(case), \"--json\", str(json_path)]\n        return cmd", "what": "A configuration becomes one `--round-<variable> <format>` pair per variable. The format is an argument, not a compile-time type, so one binary serves every configuration.", "why": "That is what `Caps(needs_rebuild=False)` declares to the search: no probe costs a rebuild."}, {"id": "py-read", "group": "Parsimony (Python)", "title": "Reading the record, and refusing a silent no-op", "status": "tested", "file": "casestudies/hdcg/grid_eval.py", "start": 167, "lang": "py", "code": "        # Positive verification: the JSON must exist and say it converged.  A\n        # non-zero exit with a written JSON is still a data point (divergence\n        # is an outcome); a missing JSON is a broken run.\n        if not out.exists():\n            raise RuntimeError(\n                f\"driver wrote no JSON (rc={proc.returncode})\\n\"\n                f\"cmd: {' '.join(cmd)}\\n{proc.stderr[-2000:]}\"\n            )\n        raw = json.loads(out.read_text())\n        return Probe(\n            case=case,\n            converged=bool(raw.get(\"converged\", False)),\n            iterations=int(raw.get(\"iterations\", -1)),\n            true_resid=float(raw.get(\"true_resid\", math.inf)),\n            t_setup=float(raw.get(\"t_setup\", 0.0)),\n            t_solve=float(raw.get(\"t_solve\", 0.0)),\n            delta=dict(raw.get(\"delta\", {})),\n            raw=raw,\n        )\n\n    def _verify_rounding(self, config: Config, probe: Probe) -> None:\n        \"\"\"A variable asked to round must report a non-zero change.\"\"\"\n        for v in VARIABLES:\n            fmt = config.get(v)\n            if fmt is None or fmt.precision >= 53:\n                continue\n            if v not in probe.delta:\n                raise RoundingNoOp(\n                    f\"{v} at {fmt.name}: driver reported no delta for it; \"\n                    \"the hook is missing or the JSON contract drifted\"\n                )\n            if probe.delta[v] == 0.0:\n                raise RoundingNoOp(\n                    f\"{v} at {fmt.name}: rounding changed nothing \"\n                    f\"(case {probe.case}).  The hook is not on the value the \"\n                    \"solve consumes -- fix it before trusting any knee.\"\n                )", "what": "A missing JSON file is an error, not a divergence: a crashed driver must not be scored as 'this format failed'. Then every variable asked to round must report a non-zero change.", "why": "A hook on the wrong object gives a flat curve that looks exactly like 'this input needs no bits'. The check turns that into a stop."}, {"id": "py-product", "group": "Parsimony (Python)", "title": "The product sweep the next study needs", "status": "proposed", "file": "(not written)", "start": null, "lang": "py", "code": "# Pseudo-code of the product sweep the next study needs (not written).\n# Two variables are cheap enough to map completely, and the map shows the\n# interaction that one-at-a-time floors can hide.\n\ndeck = {links: ladder, vectors: ladder, gauge: [A, B, C], cases: [0, 1]}\nwrite(deck, \"deck.json\")\nsrun Test_fine_bits --deck deck.json            # ONE launch per configuration\nfor rec in read_jsonl(\"results/*.jsonl\"):\n    check rec.delta > 0 for every rounded variable\n    grid[rec.links][rec.vectors] = (rec.iterations, rec.true_resid)", "what": "Two variables, every combination, one launch per gauge configuration.", "why": "The prefilter's floors are a heuristic, not a bound: a coarse format downstream can absorb upstream error. With two variables the full map is affordable and shows the interaction directly."}, {"id": "seam-argv", "group": "The seam", "title": "What one probe sends", "status": "ran", "file": "casestudies/hdcg/jobs/run_sweep.slurm", "start": 24, "lang": "sh", "code": "BASE=\"--grid 16.16.16.32 --mpi 1.1.1.4 --accelerator-threads 8 --device-mem 8000 --gauge free --Ls 8\"\n# case 0 first and complete, so a timeout still leaves a whole ladder.\nfor C in 0 1; do\nfor FMT in v53 v40 v30 v24 v20 v16 v12 v10 v8 fp32 bf16 fp16; do\n  echo \"######### stencil=$FMT case=$C #########\"\n  srun -n 4 ./select_gpu $BIN $BASE --round-stencil $FMT --case $C \\\n       --json results/sw_${FMT}_c${C}.json 2>&1 | grep -E \"PARSIMONY|Caught signal|out of memory|GRID_ASSERT\"\ndone\ndone\necho \"######### SWEEP DONE #########\"", "what": "Today the parameters are command-line flags. The published 24-point ladder was produced by this shell loop, one `srun` per point on four A100s.", "why": "There is no input file today: the format list lives in the loop. That is fine for one variable and 12 formats, and it is the thing the proposed deck replaces."}, {"id": "seam-deck", "group": "The seam", "title": "Proposed input deck", "status": "proposed", "file": "(not written)", "start": null, "lang": "json", "code": "{\n  \"study\":    \"fine-solver-links-and-vectors\",\n  \"grid\":     { \"lattice\": [16, 16, 16, 32], \"mpi\": [1, 1, 1, 4], \"Ls\": 16 },\n  \"operator\": { \"action\": \"Mobius\", \"mass\": 0.01, \"M5\": 1.8, \"b\": 1.0, \"c\": 0.0 },\n  \"solver\":   { \"outer\": \"CG\", \"tol\": 1e-8, \"maxit\": 10000,\n                \"preconditioner\": \"fp32 V-cycle behind MrhsMixedPrecPreconditioner\" },\n  \"gauge\":    [ \"<config A>\", \"<config B>\", \"<config C>\" ],\n  \"cases\":    [ 0, 1 ],\n  \"variables\": {\n    \"links\":   [ \"v24\", \"v16\", \"v12\", \"v10\", \"v8\", \"bf16\" ],\n    \"vectors\": [ \"v24\", \"v16\", \"v12\", \"v10\", \"v8\", \"bf16\" ]\n  },\n  \"sweep\":    \"product\",\n  \"output\":   \"results/{gauge}/case{case}.jsonl\"\n}", "what": "The next study's parameters in one file: the production solver's settings, three gauge configurations, two right-hand-side cases, and one ladder per variable swept as a product.", "why": "The operator and solver values shown are the stock HDCG test's, as placeholders until Joe confirms production's. The ladders start at v24 because that is the fp32 point production already runs, which makes it the sanity gate: v24 must reproduce production's iteration count exactly."}, {"id": "seam-json", "group": "The seam", "title": "What comes back", "status": "ran", "file": "casestudies/hdcg/results/sw_v16_c0.json", "start": null, "lang": "json", "code": "{\n  \"converged\": true,\n  \"iterations\": 5,\n  \"true_resid\": 4.654255408869378e-06,\n  \"cg_resid\": 3.0890452521952918e-09,\n  \"t_setup\": 53.519701,\n  \"t_solve\": 0.028165,\n  \"case\": 0,\n  \"gauge\": \"free\",\n  \"nbasis\": 20,\n  \"Ls\": 8,\n  \"subspace\": \"random\",\n  \"round\": {\n    \"stencil\": \"v16\"\n  },\n  \"delta\": {\n    \"stencil\": 6.50791129284076e-06\n  }\n}", "what": "One record per probe, written by rank 0. `iterations` is the rate; `true_resid` is judged against the exact operator; `delta` is the relative L2 change the rounding caused.", "why": "Every field that changes what the numbers mean is in the record (gauge, subspace, nbasis, Ls), so a cheap run can't later be mistaken for a physics one. Missing, and still to add: the rank count, `--mpi`, and the Grid commit."}, {"id": "g-roundbits", "group": "Code we compile into the driver", "title": "The rounding function", "status": "ran", "file": "casestudies/hdcg/round_bits.h", "start": 50, "lang": "cpp", "code": "/* Round to nearest representable value, ties to even.\n *\n * Mirrors round_to() branch for branch, including the order in which overflow,\n * zero and non-finite inputs are resolved.  nearbyint() under the default\n * FE_TONEAREST is ties-to-even, which is what np.round does; the products and\n * quotients below are all exact (scale is a power of two and the significand\n * fits), so the two implementations agree bit for bit rather than nearly.\n */\nPARSIMONY_HD inline double round_bits(double a, const RoundSpec &s) {\n  if (s.identity()) return a;\n  if (a == 0.0) return a;\n#ifdef __CUDA_ARCH__\n  if (!isfinite(a)) return a;\n#else\n  if (!std::isfinite(a)) return a;\n#endif\n\n  int e;\n  const double m = frexp(a, &e); /* a == m * 2^e, 0.5 <= |m| < 1 */\n  const int unbiased = e - 1;    /* the IEEE exponent E in a == +-1.f * 2^E */\n\n  double y;\n  if (unbiased < s.emin()) {\n    /* Subnormal in the target format: quantize to the smallest step.  Only\n     * reachable for formats whose exponent range is narrower than the value's,\n     * which is why round_to() guards this branch -- for a virtual format the\n     * quantum itself underflows.\n     */\n    const double quantum = ldexp(1.0, s.emin() - s.mant_bits());\n    y = nearbyint(a / quantum) * quantum;\n  } else {\n    const double scale = ldexp(1.0, s.precision);\n    y = ldexp(nearbyint(m * scale) / scale, e);\n  }\n\n  if (fabs(y) > s.max_finite()) y = copysign(INFINITY, a);\n  return y;\n}", "what": "Round to nearest, ties to even, to k significand bits and the target format's exponent range. Not truncation: rounding toward zero would put a systematic bias on every entry.", "why": "Grid-free and callable on the device, so it can be tested where Grid isn't. It is bitwise-equal to parsimony's `formats.round_to` over 372 doubles, and on the A100 fp32 and bf16 came out identical to v24 and v8 to every digit."}, {"id": "g-roundfield", "group": "Code we compile into the driver", "title": "Rounding a Grid field on the GPU", "status": "ran", "file": "casestudies/hdcg/round_field.h", "start": 34, "lang": "cpp", "code": "/* Round a lattice field in place; returns the relative L2 change it caused.\n *\n * The return value is the positive check that rounding happened: a sweep whose\n * knee sits at 8 bits but whose logged change is 0.0 everywhere is measuring a\n * no-op, which is exactly the failure a missing hook produces.\n */\ntemplate <class vobj>\ndouble RoundField(Grid::Lattice<vobj> &field, const RoundSpec &spec) {\n  // autoView and accelerator_for expand to unqualified Grid names\n  // (ViewCloser, acceleratorThreads, computeStream, ...), which will not\n  // resolve from inside namespace Parsimony without this.\n  using namespace Grid;\n\n  typedef typename vobj::scalar_type scalar_type;\n  static_assert(IsDoubleScalar<scalar_type>::value,\n                \"RoundField: double-precision fields only\");\n  static_assert(sizeof(vobj) % sizeof(double) == 0, \"RoundField: unexpected padding\");\n\n  if (spec.identity()) return 0.0;\n\n  Lattice<vobj> before(field.Grid());\n  before = field;\n  const double norm_before = norm2(field);\n\n  const int words = (int)(sizeof(vobj) / sizeof(double));\n  const uint64_t nsite = field.Grid()->oSites();\n  {\n    autoView(view, field, AcceleratorWrite);\n    accelerator_for(ss, nsite, 1, {\n      double *p = (double *)&view[ss];\n      for (int w = 0; w < words; w++) p[w] = round_bits(p[w], spec);\n    });\n  }\n\n  Lattice<vobj> diff(field.Grid());\n  diff = before - field;\n  const double norm_delta = norm2(diff);\n  return norm_before > 0.0 ? std::sqrt(norm_delta / norm_before) : 0.0;\n}", "what": "Every double in every site object is snapped in place, one GPU thread per outer site. For a ComplexD field that rounds the real and imaginary part of every SIMD lane.", "why": "Returns the relative L2 change, the positive check the Python side insists on. It refuses single-precision fields by type name, because a ComplexF site is 8 bytes and would pass a size check. The production-matching study needs a float variant."}, {"id": "g-parse", "group": "Code we compile into the driver", "title": "Reading the format flag", "status": "ran", "file": "casestudies/hdcg/Test_coarse_bits.cc", "start": 76, "lang": "cpp", "code": "  Parsimony::RoundSpec spec = Parsimony::ROUND_OFF;\n  std::string spec_name(\"v53\");\n  if ( GridCmdOptionExists(argv,argv+argc,\"--round-stencil\") ){\n    spec_name = GridCmdOptionPayload(argv,argv+argc,\"--round-stencil\");\n    if ( !Parsimony::parse_round_spec(spec_name.c_str(),spec) ) {\n      std::cout << GridLogError << \"unrecognised format '\" << spec_name << \"'\" << std::endl;\n      GRID_ASSERT(0);\n    }\n  }", "what": "`v53` means rounding off, and it is the default, so the unmodified run is always available as the reference.", "why": "An unrecognised name aborts instead of falling back. A typo in a sweep script must not quietly produce an fp64 point labelled bf16."}, {"id": "g-twoops", "group": "Code we compile into the driver", "title": "Two operators: one to degrade, one to judge with", "status": "ran", "file": "casestudies/hdcg/Test_coarse_bits.cc", "start": 167, "lang": "cpp", "code": "  // Two coarsenings of the same operator from the same aggregation: one to\n  // degrade, one to judge with.\n  LittleDiracOperator LittleDiracOp (geom,FGrid,Coarse5d);\n  LittleDiracOperator LittleDiracRef(geom,FGrid,Coarse5d);\n  LittleDiracOp .CoarsenOperator(HOA,Aggregates);\n  LittleDiracRef.CoarsenOperator(HOA,Aggregates);", "what": "Both coarse operators are built from the same aggregation, so they are identical before rounding.", "why": "The rounded operator converges accurately to its own, different, solution, so its own residual says nothing about accuracy. This is also half the setup cost; copying the stencil would halve it."}, {"id": "g-hook", "group": "Code we compile into the driver", "title": "The hook: round the stored stencil", "status": "ran", "file": "casestudies/hdcg/Test_coarse_bits.cc", "start": 176, "lang": "cpp", "code": "  //////////////////////////////////////////////////////////////////////////\n  // Round the stored stencil.  Both _A and _Adag: they are both stored\n  // arrays, so a storage-format claim has to cover both.\n  //////////////////////////////////////////////////////////////////////////\n  double delta = 0.0;\n  if ( !spec.identity() ) {\n    const int npoint = geom.npoint;\n    for(int p=0;p<npoint;p++){\n      const double d = Parsimony::RoundField(LittleDiracOp._A[p],spec);\n      if ( d > delta ) delta = d;\n    }\n    // _Adag is only allocated for a non-Hermitian operator; for a Hermitian\n    // one Mdag reads _A, so rounding _A alone already covers all the stored\n    // stencil there is.  Indexing _Adag unconditionally reads an empty vector.\n    for(size_t p=0;p<LittleDiracOp._Adag.size();p++){\n      const double d = Parsimony::RoundField(LittleDiracOp._Adag[p],spec);\n      if ( d > delta ) delta = d;\n    }\n    std::cout << GridLogMessage << \"PARSIMONY rounded stencil to \" << spec_name\n\t      << \" over \" << npoint << \" points (+\"\n\t      << LittleDiracOp._Adag.size() << \" dag), worst relative L2 change \"\n\t      << delta << std::endl;\n  }", "what": "This is the whole intervention: every one of the 81 stencil matrices, rounded in place, after the operator is built and before it is used.", "why": "Grid allocates `_Adag` only for a non-Hermitian operator. The first version indexed it unconditionally, read past an empty vector, and every rounded run segfaulted while the unrounded one worked, which pointed straight at the hook."}, {"id": "g-solve", "group": "Code we compile into the driver", "title": "Solve, then judge with the exact operator", "status": "ran", "file": "casestudies/hdcg/Test_coarse_bits.cc", "start": 200, "lang": "cpp", "code": "  //////////////////////////////////////////////////////////////////////////\n  // CG against the rounded operator.\n  //////////////////////////////////////////////////////////////////////////\n  typedef HermitianLinearOperator<LittleDiracOperator,CoarseVector> HermMatrix;\n  HermMatrix CoarseOp   (LittleDiracOp);\n  HermMatrix CoarseOpRef(LittleDiracRef);\n\n  if ( case_id != 0 ) {\n    std::vector<int> case_seeds({5+1000*case_id,6+1000*case_id,\n\t\t\t\t 7+1000*case_id,8+1000*case_id});\n    CRNG.SeedFixedIntegers(case_seeds);\n  }\n  CoarseVector c_src(Coarse5d), c_res(Coarse5d);\n  random(CRNG,c_src);\n  c_res = Zero();\n\n  ConjugateGradient<CoarseVector> CG(1.0e-8,10000,false);\n  const double t_solve_start = now();\n  CG(CoarseOp,c_src,c_res);\n  const double t_solve = now() - t_solve_start;\n\n  //////////////////////////////////////////////////////////////////////////\n  // Judge with the exact operator.  The rounded operator converges to its\n  // own answer, so its own residual says nothing about accuracy.\n  //////////////////////////////////////////////////////////////////////////\n  CoarseVector c_chk(Coarse5d), c_err(Coarse5d);\n  CoarseOpRef.HermOp(c_res,c_chk);\n  c_err = c_chk - c_src;\n  const RealD true_resid = sqrt(norm2(c_err)/norm2(c_src));", "what": "Grid's own CG against the rounded operator, then the exact copy applied to the answer.", "why": "Two observables that answer different questions: iterations are the rate cost, true_resid the accuracy floor. In the run, the first never moved from 5 and the second tracked 2^-k."}, {"id": "g-write", "group": "Code we compile into the driver", "title": "Writing the record", "status": "ran", "file": "casestudies/hdcg/Test_coarse_bits.cc", "start": 237, "lang": "cpp", "code": "  if ( json_path.size() && UGrid->IsBoss() ) {\n    FILE *fp = fopen(json_path.c_str(),\"w\");\n    GRID_ASSERT(fp!=NULL);\n    fprintf(fp,\"{\\\"converged\\\": %s, \\\"iterations\\\": %d,\\n\",\n\t    (CG.IterationsToComplete < 10000) ? \"true\" : \"false\",\n\t    (int)CG.IterationsToComplete);\n    fprintf(fp,\" \\\"true_resid\\\": %.17g, \\\"cg_resid\\\": %.17g,\\n\",\n\t    (double)true_resid,(double)CG.TrueResidual);\n    fprintf(fp,\" \\\"t_setup\\\": %.6f, \\\"t_solve\\\": %.6f, \\\"case\\\": %d,\\n\",\n\t    t_setup,t_solve,case_id);\n    fprintf(fp,\" \\\"gauge\\\": \\\"%s\\\", \\\"nbasis\\\": %d, \\\"Ls\\\": %d, \\\"subspace\\\": \\\"random\\\",\\n\",\n\t    gauge.c_str(),nbasis,Ls);\n    fprintf(fp,\" \\\"round\\\": {\\\"stencil\\\": \\\"%s\\\"},\\n\",spec_name.c_str());\n    if ( spec.identity() ) fprintf(fp,\" \\\"delta\\\": {}\\n}\\n\");\n    else                   fprintf(fp,\" \\\"delta\\\": {\\\"stencil\\\": %.17g}\\n}\\n\",delta);\n    fclose(fp);\n    std::cout << GridLogMessage << \"PARSIMONY wrote \" << json_path << std::endl;\n  }", "what": "Rank 0 writes one JSON object. `delta` is present only for a rounded variable, which is what lets the Python side tell 'not asked' from 'asked and did nothing'.", "why": "Written even when the solve fails: non-convergence is a data point, and only a missing file is a broken run."}, {"id": "g-hdcg", "group": "Code we compile into the driver", "title": "The three HDCG hooks", "status": "blocked", "file": "casestudies/hdcg/Test_hdcg_parsimony.cc", "start": 254, "lang": "cpp", "code": "  Aggregates.Orthogonalise();\n\n  ////////////////////////////////////////////////////////////////////////\n  // HOOK 1: subspace.\n  //\n  // Before CoarsenOperator, so the coarse operator is built from the same\n  // rounded vectors the projector later imports: the two-level method stays\n  // Galerkin-consistent and what is measured is the subspace's own bit\n  // requirement.  Orthogonality is degraded to O(2^-k) here; that is part of\n  // the measurement, not a defect to repair with a second Orthogonalise().\n  ////////////////////////////////////////////////////////////////////////\n  if ( !spec_subspace.identity() ) {\n    delta[\"subspace\"] = Parsimony::RoundFields(Aggregates.subspace,spec_subspace);\n    std::cout << GridLogMessage << \"PARSIMONY rounded subspace, relative L2 change \"\n\t      << delta[\"subspace\"] << std::endl;\n  }\n  ...\n  mrhs.CoarsenOperator(FineHermOp,Aggregates,Coarse5d);\n\n  ////////////////////////////////////////////////////////////////////////\n  // HOOK 2: coarse stencil.\n  //\n  // GetMatrix/SetMatrix round-trip each geometry point through a Lattice on\n  // the single-rhs coarse grid.  Unlike hook 1 this deliberately breaks\n  // consistency between the coarse operator and the projector, which is why\n  // it is expected to knee more sharply.\n  ////////////////////////////////////////////////////////////////////////\n  if ( !spec_stencil.identity() ) {\n    typedef MultiGeneralCoarsenedMatrix_t::CoarseMatrix CoarseMatrix;\n    const int npoint = mrhs.Geometry().npoint;\n    std::vector<CoarseMatrix> Astencil(npoint,CoarseMatrix(Coarse5d));\n    double worst = 0.0;\n    for(int p=0;p<npoint;p++){\n      mrhs.GetMatrix(p,Astencil);\n      const double d = Parsimony::RoundField(Astencil[p],spec_stencil);\n      if ( d > worst ) worst = d;\n      mrhs.SetMatrix(p,Astencil);\n    }\n    delta[\"stencil\"] = worst;\n    std::cout << GridLogMessage << \"PARSIMONY rounded stencil over \"<<npoint\n\t      << \" points, worst relative L2 change \" << worst << std::endl;\n  }\n  ...\n  IRL.calc(eval,evec,c_src,Nconv,LanczosType::irbl);\n\n  ////////////////////////////////////////////////////////////////////////\n  // HOOK 3: deflation eigenvectors.\n  //\n  // These only seed the coarse solve's initial guess, so this is the\n  // tolerance control of the three: if evec does not go lower than subspace\n  // and stencil, suspect the harness before the physics.\n  ////////////////////////////////////////////////////////////////////////\n  if ( !spec_evec.identity() ) {\n    delta[\"evec\"] = Parsimony::RoundFields(evec,spec_evec);\n    std::cout << GridLogMessage << \"PARSIMONY rounded evecs, relative L2 change \"\n\t      << delta[\"evec\"] << std::endl;\n  }", "lnums": [254, 255, 256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, null, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, null, 362, 363, 364, 365, 366, 367, 368, 369, 370, 371, 372, 373, 374, 375], "ranges": "254\u2013269, 287\u2013311, 362\u2013375", "what": "Subspace before coarsening, stencil after, deflation eigenvectors before import. The placement is the experiment: rounding the subspace first keeps the two-level method Galerkin-consistent, and rounding the stencil deliberately breaks it.", "why": "Compiles and runs up to a segfault in `MultiGeneralCoarsenedMatrix`'s constructor, which is Grid's deprecated class, not these lines. No hook has executed: hooks 2 and 3 sit after the crash, and hook 1, which sits before it, was never switched on in a run."}, {"id": "p-perf", "group": "Changes to the Grid library", "title": "Patch 1: a build break on current NERSC defaults", "status": "ran", "file": "casestudies/hdcg/grid-patches/0001-perfcount-rdtsc-shim.patch", "start": null, "lang": "diff", "code": "diff --git a/Grid/perfmon/PerfCount.h b/Grid/perfmon/PerfCount.h\nindex bad1181b..66dff9d1 100644\n--- a/Grid/perfmon/PerfCount.h\n+++ b/Grid/perfmon/PerfCount.h\n@@ -51,8 +51,7 @@ Author: paboyle <paboyle@ph.ed.ac.uk>\n #endif\n #ifdef __x86_64__\n #ifdef GRID_CUDA\n-accelerator_inline uint64_t __rdtsc(void) {  return 0; }\n-accelerator_inline uint64_t __rdpmc(int ) {  return 0; }\n+#include <x86intrin.h>\n #else\n #include <x86intrin.h>\n #endif", "what": "Grid replaces `__rdtsc` with a no-op under CUDA to keep `x86intrin.h` away from nvcc, but cudatoolkit 13.2 declares the real one first: 'cannot overload functions distinguished by return type alone'.", "why": "Both uses are host-side performance counters in Stat.cc, never in a kernel, so the fix is to use the real intrinsic. It does not touch numerics. cudatoolkit 12.4 is no escape: it refuses gcc-native/14, the Perlmutter default."}, {"id": "p-adef", "group": "Changes to the Grid library", "title": "Patch 2: expose TwoLevelCGmrhs's iteration count", "status": "ran", "file": "casestudies/hdcg/grid-patches/0002-twolevelcgmrhs-expose-iterations.patch", "start": null, "lang": "diff", "code": "diff --git a/Grid/algorithms/iterative/AdefMrhs.h b/Grid/algorithms/iterative/AdefMrhs.h\nindex b18db98..3523de3 100644\n--- a/Grid/algorithms/iterative/AdefMrhs.h\n+++ b/Grid/algorithms/iterative/AdefMrhs.h\n@@ -64,6 +64,12 @@ class TwoLevelCGmrhs : public LinearFunction<Field>\n   GridBase *grid;\n   MrhsCGAlgorithm Algorithm;\n \n+  // Filled in upon completion, as ConjugateGradient does.  TrueResidual is the\n+  // worst over the right hand sides, recomputed from the fine operator.\n+  Integer IterationsToComplete;\n+  RealD   TrueResidual;\n+  bool    ConvergedFlag;\n+\n   LinearOperatorBase<Field>    &_FineLinop;\n   MrhsPreconditioner<Field>    &_Precon;\n   MultiRHSBlockCGLinalg<Field>  _BlockCGLinalg;\n@@ -77,6 +83,9 @@ class TwoLevelCGmrhs : public LinearFunction<Field>\n     Tolerance(tol),\n     MaxIterations(maxit),\n     Algorithm(alg),\n+    IterationsToComplete(0),\n+    TrueResidual(0.0),\n+    ConvergedFlag(false),\n     _FineLinop(FineLinop),\n     _Precon(Precon)\n   {\n@@ -518,6 +527,9 @@ class TwoLevelCGmrhs : public LinearFunction<Field>\n \tstd::cout<<GridLogMessage<<\"HDCG: mrhs fPcg : prec M1 \"<<M1Timer.Elapsed()<<std::endl;;\n \t_Precon.ReportTimers(\"HDCG: mrhs fPcg : \");\n \n+\tIterationsToComplete = k;\n+\tConvergedFlag        = true;\n+\tTrueResidual         = 0.0;\n \tfor(int rhs=0;rhs<nrhs;rhs++){\n \t  _FineLinop.HermOp(x[rhs],mmp[rhs][0]);\t\t\t  \n \t  Field tmp(grid);\n@@ -528,6 +540,7 @@ class TwoLevelCGmrhs : public LinearFunction<Field>\n \t  RealD  srcnorm = sqrt(norm2(src[rhs]));\n \t  RealD  tmpnorm = sqrt(norm2(tmp));\n \t  RealD  true_residual = tmpnorm/srcnorm;\n+\t  if ( true_residual > TrueResidual ) TrueResidual = true_residual;\n \t  std::cout<<GridLogMessage\n \t\t   <<\"HDCG: true residual [\"<<rhs<<\"] is \"<<true_residual\n \t\t   <<\" solution \"<<xnorm\n@@ -540,11 +553,20 @@ class TwoLevelCGmrhs : public LinearFunction<Field>\n       \n     }\n     HDCGTimer.Stop();\n+    IterationsToComplete = MaxIterations;\n+    ConvergedFlag        = false;\n     std::cout<<GridLogMessage<<\"HDCG: not converged \"<<HDCGTimer.Elapsed()<<std::endl;\n+    TrueResidual = 0.0;\n     for(int rhs=0;rhs<nrhs;rhs++){\n+      _FineLinop.HermOp(x[rhs],mmp[rhs][0]);\n+      Field tmp(grid);\n+      axpy(tmp,-1.0,src[rhs],mmp[rhs][0]);\n       RealD  xnorm   = sqrt(norm2(x[rhs]));\n       RealD  srcnorm = sqrt(norm2(src[rhs]));\n-      std::cout<<GridLogMessage<<\"HDCG: non-converged solution \"<<xnorm<<\" source \"<<srcnorm<<std::endl;\n+      RealD  true_residual = sqrt(norm2(tmp))/srcnorm;\n+      if ( true_residual > TrueResidual ) TrueResidual = true_residual;\n+      std::cout<<GridLogMessage<<\"HDCG: non-converged solution \"<<xnorm<<\" source \"<<srcnorm\n+\t       <<\" true residual \"<<true_residual<<std::endl;\n     }\n   }", "what": "The multi-RHS HDCG solver printed its iteration count and true residual but kept them. This adds the same three members ConjugateGradient already has, filled on both exits.", "why": "Without it an automated study has to scrape stdout. Both patches apply cleanly to 865c338d, and these two are the only changes to Grid's library: all the rounding lives in our driver."}, {"id": "a-today", "group": "Amortizing setup", "title": "Today: one configuration per process", "status": "ran", "file": "casestudies/hdcg/results/*.json", "start": null, "lang": "text", "code": "per point, median of 24 (4x A100, one node)\n\n  setup   53.6 s   aggregation + 2x CoarsenOperator\n  solve    0.017 s CG, 5 iterations\n  srun     ~3.8 s  launch and MPI start\n  ------  ------\n  wall    57.4 s\n\n24 points          22.9 min      1.53 GPU-hours\nsolve / compute     0.05 %", "what": "No. Grid does not loop today. Every point is a separate process that rebuilds the identical operator, rounds it one way, and measures for 17 ms.", "why": "The solve is 0.05% of the compute, so a search pays setup times evaluations and almost nothing else. Moving the loop into the driver is the one optimisation that matters."}, {"id": "a-loop", "group": "Amortizing setup", "title": "Proposed: the loop inside the driver", "status": "proposed", "file": "(not written)", "start": null, "lang": "cpp", "code": "// PROPOSED -- not written.  Set up once, then sweep inside one process.\nsetup();                                  // gauge field, fp64 outer operator,\n                                          // fp32 preconditioner: ~all of the cost\nLatticeGaugeFieldF UmuF_exact = UmuF;     // rounding is in place, so keep a copy\n\nfor (const Point &pt : deck.points) {     // 6 x 6 = 36 (links, vectors) per config\n  UmuF = UmuF_exact;                      // restore\n  double d_links = Parsimony::RoundField(UmuF, pt.links);\n  DiracF.ImportGauge(UmuF);               // re-derive the doubled links from it\n  VecRound.spec = pt.vectors;             // read by the rounding operator below\n\n  Result r = outer_solve(src, sol);       // fp64 CG, fp32 V-cycle preconditioner\n  r.true_resid = exact_residual(src, sol);// judged with the fp64 operator\n  r.delta = { {\"links\", d_links}, {\"vectors\", VecRound.worst} };\n  append_jsonl(out, pt, r);               // one record per point\n}", "what": "Set up once, keep an exact copy, then per point: restore, round, re-import, solve, record. For the fine operator the stored data is the gauge links, and `ImportGauge` re-derives the doubled links from the rounded copy.", "why": "Rounding is in place and destructive, which is why the restore is needed. 36 points would cost about one setup instead of 36. `ImportGauge` exists on WilsonFermion and WilsonFermion5D at 865c338d."}, {"id": "a-vec", "group": "Amortizing setup", "title": "Proposed: rounding the vectors, not just the links", "status": "proposed", "file": "(not written)", "start": null, "lang": "cpp", "code": "// PROPOSED -- rounds the vectors the preconditioner writes, not just its links.\ntemplate<class Field>\nclass RoundedHermOp : public LinearOperatorBase<Field> {\n  LinearOperatorBase<Field> &_op;\npublic:\n  Parsimony::RoundSpec spec;              // set per sweep point\n  double worst = 0.0;                     // positive check, as for the links\n\n  RoundedHermOp(LinearOperatorBase<Field> &op) : _op(op) {}\n  void HermOp(const Field &in, Field &out) override {\n    _op.HermOp(in, out);                  // the product is computed in fp32 ...\n    Parsimony::RoundFieldFast(out, spec); // ... then stored narrow\n  }\n  // OpDiag, OpDir, Op, AdjOp forward the same way\n};", "what": "Links are rounded once. Vectors are written on every operator application, so rounding them needs a hook that fires each time: an operator adaptor that stores each product narrow.", "why": "For domain-wall fermions one 4D link serves all Ls slices, so vectors are most of the mat-vec traffic (estimate ~960 B of spinors against ~72 B of links per 5D site at Ls = 16). This adaptor rounds only operator outputs, not the smoother's other updates, so it is a partial model; and the per-call rounding needs a fast path without the two-lattice L2 check."}];
+const TRACE = ["py-search", "py-command", "seam-argv", "g-parse", "g-twoops", "g-hook", "g-roundfield", "g-roundbits", "g-solve", "g-write", "seam-json", "py-read"];
+const BY = Object.fromEntries(ITEMS.map(it => [it.id, it]));
+const STATUS = {
+  ran: "ran on the A100s", tested: "tested locally", blocked: "compiled, blocked",
+  proposed: "proposed, not written", pseudo: "pseudo-code"
+};
+const LANES = {
+  "lane-py":   ["py-search", "py-command", "py-read", "py-product"],
+  "lane-seam": ["seam-argv", "seam-deck", "seam-json"],
+  "lane-grid": ["g-parse", "g-twoops", "g-hook", "g-roundfield", "g-solve", "g-write", "g-hdcg", "p-perf", "p-adef", "a-loop"]
+};
+const SHORT = {
+  "py-search": "search loop", "py-command": "build argv", "py-read": "read + verify record",
+  "py-product": "product sweep", "seam-argv": "command line", "seam-deck": "input deck",
+  "seam-json": "JSON record", "g-parse": "parse --round-*", "g-twoops": "build 2 operators",
+  "g-hook": "round the stencil", "g-roundfield": "RoundField kernel", "g-solve": "CG, judge exact",
+  "g-write": "write record", "g-hdcg": "HDCG hooks", "p-perf": "patch: PerfCount.h",
+  "p-adef": "patch: AdefMrhs.h", "a-loop": "in-process loop"
+};
+
+// ---------------------------------------------------------------- highlighting
+const KW = {
+  cpp: "if|else|for|while|return|const|double|int|bool|void|auto|template|class|typename|typedef|using|namespace|static_assert|sizeof|size_t|uint64_t|std|public|override|true|false",
+  py:  "def|for|in|if|elif|else|return|raise|not|is|None|and|or|with|as|class|continue|True|False|assert|import|from",
+  sh:  "for|in|do|done|srun|echo|if|then|fi",
+  json:"true|false|null"
+};
+function tokenize(code, lang) {
+  if (lang === "text" || lang === "diff") return [{ c: "", t: code }];
+  const parts = [];
+  const pats = [];
+  if (lang === "cpp") pats.push(["com", "/\\*[\\s\\S]*?\\*/"], ["com", "//[^\\n]*"]);
+  if (lang === "py" || lang === "sh") pats.push(["com", "#[^\\n]*"]);
+  pats.push(["str", '"(?:\\\\.|[^"\\\\\\n])*"']);
+  if (lang === "py") pats.push(["str", "'(?:\\\\.|[^'\\\\\\n])*'"]);
+  pats.push(["kw", "\\b(?:" + KW[lang] + ")\\b"], ["num", "\\b\\d+(?:\\.\\d+)?(?:e[-+]?\\d+)?\\b"]);
+  const re = new RegExp(pats.map(p => "(" + p[1] + ")").join("|"), "g");
+  let last = 0, m;
+  while ((m = re.exec(code)) !== null) {
+    if (m.index > last) parts.push({ c: "", t: code.slice(last, m.index) });
+    const gi = m.slice(1).findIndex(x => x !== undefined);
+    parts.push({ c: pats[gi][0], t: m[0] });
+    last = re.lastIndex;
+  }
+  if (last < code.length) parts.push({ c: "", t: code.slice(last) });
+  return parts;
+}
+const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function renderCode(it) {
+  const parts = tokenize(it.code, it.lang);
+  const rows = [[]];
+  parts.forEach(p => {
+    p.t.split("\n").forEach((seg, i) => {
+      if (i > 0) rows.push([]);
+      if (seg) rows[rows.length - 1].push(p.c ? '<span class="' + p.c + '">' + esc(seg) + "</span>" : esc(seg));
+    });
+  });
+  const raw = it.code.split("\n");
+  const gutter = it.start !== null && it.start !== undefined;
+  let html = "<table>";
+  rows.forEach((r, i) => {
+    let cls = "";
+    if (it.lang === "diff") {
+      const l = raw[i] || "";
+      if (l.startsWith("+++") || l.startsWith("---") || l.startsWith("diff") || l.startsWith("index")) cls = "hdr";
+      else if (l.startsWith("@@")) cls = "hdr";
+      else if (l.startsWith("+")) cls = "add";
+      else if (l.startsWith("-")) cls = "del";
+    }
+    html += '<tr class="' + cls + '">' +
+      (gutter ? '<td class="ln">' + (it.lnums ? (it.lnums[i] === null ? "⋮" : it.lnums[i]) : (it.start + i)) + "</td>" : "") +
+      '<td class="src">' + (r.join("") || " ") + "</td></tr>";
+  });
+  return html + "</table>";
+}
+
+// ---------------------------------------------------------------- build UI
+const nav = document.getElementById("nav");
+const groups = [];
+ITEMS.forEach(it => { if (!groups.includes(it.group)) groups.push(it.group); });
+groups.forEach(g => {
+  const d = document.createElement("div"); d.className = "grp";
+  d.innerHTML = '<div class="gname">' + esc(g) + "</div>";
+  ITEMS.filter(it => it.group === g).forEach(it => {
+    const b = document.createElement("button");
+    b.className = "item"; b.type = "button"; b.dataset.id = it.id;
+    b.innerHTML = '<i class="dot d-' + it.status + '" title="' + STATUS[it.status] + '"></i><span>' + esc(it.title) + "</span>";
+    b.addEventListener("click", () => show(it.id, false));
+    d.appendChild(b);
+  });
+  nav.appendChild(d);
+});
+Object.entries(LANES).forEach(([lane, ids]) => {
+  const el = document.getElementById(lane);
+  ids.forEach(id => {
+    const it = BY[id];
+    const b = document.createElement("button");
+    b.className = "node" + (id.startsWith("p-") ? " lib" : ""); b.type = "button"; b.dataset.id = id;
+    b.innerHTML = '<i class="dot d-' + it.status + '"></i>' + esc(SHORT[id]);
+    b.title = it.title + " (" + STATUS[it.status] + ")";
+    b.addEventListener("click", () => { show(id, false); document.getElementById("panel").scrollIntoView({ block: "nearest" }); });
+    el.appendChild(b);
+  });
+});
+document.querySelectorAll("[data-go]").forEach(b =>
+  b.addEventListener("click", () => { show(b.dataset.go, false); document.getElementById("panel").scrollIntoView({ block: "nearest" }); }));
+
+let tracePos = -1;
+function show(id, fromTrace) {
+  const it = BY[id];
+  if (!fromTrace) tracePos = TRACE.indexOf(id);
+  document.querySelectorAll("[data-id]").forEach(el =>
+    el.setAttribute("aria-current", el.dataset.id === id ? "true" : "false"));
+  const chip = document.getElementById("p-chip");
+  chip.className = "chip st-" + it.status; chip.textContent = STATUS[it.status];
+  document.getElementById("p-file").textContent =
+    it.file + (it.ranges ? " : " + it.ranges : (it.start ? " : " + it.start + "–" + (it.start + it.code.split("\n").length - 1) : ""));
+  document.getElementById("p-title").textContent = it.title;
+  document.getElementById("p-what").innerHTML = fmt(it.what);
+  document.getElementById("p-why").innerHTML = fmt(it.why);
+  document.getElementById("p-code").innerHTML = renderCode(it);
+  updateTrace();
+}
+function fmt(s) { return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>"); }
+function updateTrace() {
+  const prev = document.getElementById("btn-prev"), next = document.getElementById("btn-next");
+  const t = document.getElementById("p-trace");
+  if (tracePos < 0) {
+    t.textContent = "This section is off the probe's path. Follow one probe from start to finish:";
+    prev.disabled = true; next.textContent = "Trace one probe →";
+  } else {
+    t.textContent = "Tracing one probe (stencil = v16): step " + (tracePos + 1) + " of " + TRACE.length;
+    prev.disabled = tracePos === 0;
+    next.textContent = tracePos === TRACE.length - 1 ? "Start over ↺" : "Next step →";
+  }
+}
+document.getElementById("btn-next").addEventListener("click", () => {
+  tracePos = (tracePos < 0 || tracePos === TRACE.length - 1) ? 0 : tracePos + 1;
+  show(TRACE[tracePos], true);
+});
+document.getElementById("btn-prev").addEventListener("click", () => {
+  if (tracePos > 0) { tracePos -= 1; show(TRACE[tracePos], true); }
+});
+show("py-search", false);
+</script>
+
+</body></html>
