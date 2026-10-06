@@ -1,0 +1,76 @@
+From 4faacb88dc618049bd98a4bdb270033d70c5645b Mon Sep 17 00:00:00 2001
+From: Mark Adams <mfadams@lbl.gov>
+Date: Tue, 6 Oct 2026 17:41:30 -0400
+Subject: [PATCH 2/2] Tracing: support header-only NVTX3 for
+ --enable-tracing=nvtx
+
+CUDA 13 no longer ships nvToolsExt.h or libnvToolsExt, only the header-only
+nvtx3/nvToolsExt.h. Include that when present, and link libnvToolsExt only
+if it exists. Also give traceStart/traceStop their missing bodies.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ Grid/perfmon/Tracing.h | 20 ++++++++++++++++----
+ configure.ac           |  3 ++-
+ 2 files changed, 18 insertions(+), 5 deletions(-)
+
+diff --git a/Grid/perfmon/Tracing.h b/Grid/perfmon/Tracing.h
+index 15052903..385f7843 100644
+--- a/Grid/perfmon/Tracing.h
++++ b/Grid/perfmon/Tracing.h
+@@ -1,9 +1,22 @@
+ #pragma once
+ 
++// Tracing headers go at global scope: NVTX3 is include-guarded, and CUDA's own
++// headers include it too, so a first include inside namespace Grid hides its types
++#ifdef GRID_TRACING_NVTX
++// CUDA 13 ships only the header-only NVTX3
++#if __has_include(<nvtx3/nvToolsExt.h>)
++#include <nvtx3/nvToolsExt.h>
++#else
++#include <nvToolsExt.h>
++#endif
++#endif
++#ifdef GRID_TRACING_ROCTX
++#include <roctracer/roctx.h>
++#endif
++
+ NAMESPACE_BEGIN(Grid);
+ 
+ #ifdef GRID_TRACING_NVTX
+-#include <nvToolsExt.h>
+ class GridTracer {
+ public:
+   GridTracer(const char* name) {
+@@ -15,12 +28,11 @@ public:
+ };
+ inline void tracePush(const char *name) { nvtxRangePushA(name); }
+ inline void tracePop(const char *name) { nvtxRangePop(); }
+-inline int  traceStart(const char *name) {  }
+-inline void traceStop(int ID) {  }
++inline int  traceStart(const char *name) { return nvtxRangeStartA(name); }
++inline void traceStop(int ID) { nvtxRangeEnd(ID); }
+ #endif
+ 
+ #ifdef GRID_TRACING_ROCTX
+-#include <roctracer/roctx.h>
+ class GridTracer {
+  public:
+   GridTracer(const char* name) {
+diff --git a/configure.ac b/configure.ac
+index 86779141..2e03f62b 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -180,7 +180,8 @@ AC_ARG_ENABLE([tracing],
+ case ${ac_TRACING} in
+     nvtx)
+         AC_DEFINE([GRID_TRACING_NVTX],[1],[use NVTX])
+-	LIBS="${LIBS} -lnvToolsExt"
++	# NVTX3 (CUDA >= 10) is header-only; link libnvToolsExt only where it exists
++	AC_SEARCH_LIBS([nvtxRangePushA],[nvToolsExt])
+ 	;;
+     roctx)
+         AC_DEFINE([GRID_TRACING_ROCTX],[1],[use ROCTX])
+-- 
+2.54.0 (Apple Git-157)
+

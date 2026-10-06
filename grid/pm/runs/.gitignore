@@ -1,0 +1,4 @@
+# Binary profiler reports stay on Perlmutter: /pscratch/sd/m/madams/gridperf/runs/
+*.ncu-rep
+*.nsys-rep
+*.sqlite

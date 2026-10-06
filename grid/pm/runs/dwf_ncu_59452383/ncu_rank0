@@ -1,0 +1,10 @@
+#!/bin/bash
+if [[ ${SLURM_PROCID} == "0" ]]; then
+  exec ncu --nvtx --print-nvtx-rename kernel \
+    --nvtx-include "DhopInterior/" --nvtx-include "DhopExterior/" \
+    --nvtx-include "Gather/" --nvtx-include "Merge/" \
+    --launch-skip 8 --launch-count 16 --set full \
+    -o ncu_rank0 "$@"
+else
+  exec "$@"
+fi

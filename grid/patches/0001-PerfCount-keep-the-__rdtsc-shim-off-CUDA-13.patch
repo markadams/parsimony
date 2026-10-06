@@ -1,0 +1,31 @@
+From e87f48141dbea2efd30e71f60ca44a7bb628781c Mon Sep 17 00:00:00 2001
+From: Mark Adams <mfadams@lbl.gov>
+Date: Tue, 6 Oct 2026 17:41:30 -0400
+Subject: [PATCH 1/2] PerfCount: keep the __rdtsc shim off CUDA 13
+
+CUDA 13 headers declare the real __rdtsc, so the GRID_CUDA no-op shim fails
+to compile ("cannot overload functions distinguished by return type alone").
+Use x86intrin.h from CUDA 13 on; older CUDA keeps the shim.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ Grid/perfmon/PerfCount.h | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/Grid/perfmon/PerfCount.h b/Grid/perfmon/PerfCount.h
+index bad1181b..68eed69d 100644
+--- a/Grid/perfmon/PerfCount.h
++++ b/Grid/perfmon/PerfCount.h
+@@ -50,7 +50,8 @@ Author: paboyle <paboyle@ph.ed.ac.uk>
+ #include <sys/syscall.h>
+ #endif
+ #ifdef __x86_64__
+-#ifdef GRID_CUDA
++// CUDA 13 headers declare the real __rdtsc, so the shim no longer compiles there
++#if defined(GRID_CUDA) && (__CUDACC_VER_MAJOR__ < 13)
+ accelerator_inline uint64_t __rdtsc(void) {  return 0; }
+ accelerator_inline uint64_t __rdpmc(int ) {  return 0; }
+ #else
+-- 
+2.54.0 (Apple Git-157)
+

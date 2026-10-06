@@ -1,0 +1,49 @@
+Attempting to use an MPI routine (internal_Comm_rank) before initializing or after finalizing MPICH
+Attempting to use an MPI routine (internal_Comm_rank) before initializing or after finalizing MPICH
+Attempting to use an MPI routine (internal_Comm_rank) before initializing or after finalizing MPICH
+Attempting to use an MPI routine (internal_Comm_rank) before initializing or after finalizing MPICH
+local rank 2 device 0 bus id: 0000:82:00.0
+local rank 3 device 0 bus id: 0000:C1:00.0
+SLURM detected
+AcceleratorCudaInit[0]: ========================
+AcceleratorCudaInit[0]: Device Number    : 0
+AcceleratorCudaInit[0]: ========================
+AcceleratorCudaInit[0]: Device identifier: NVIDIA A100-SXM4-40GB
+AcceleratorCudaInit[0]:   totalGlobalMem: 42404806656 
+AcceleratorCudaInit[0]:   managedMemory: 1 
+AcceleratorCudaInit[0]:   isMultiGpuBoard: 0 
+AcceleratorCudaInit[0]:   warpSize: 32 
+AcceleratorCudaInit[0]:   pciBusID: 3 
+AcceleratorCudaInit[0]:   pciDeviceID: 0 
+AcceleratorCudaInit[0]: maxGridSize (2147483647,65535,65535)
+AcceleratorCudaInit: using default device 
+AcceleratorCudaInit: assume user either uses
+AcceleratorCudaInit: a) IBM jsrun, or 
+AcceleratorCudaInit: b) invokes through a wrapping script to set CUDA_VISIBLE_DEVICES, UCX_NET_DEVICES, and numa binding 
+AcceleratorCudaInit: Configure options --enable-setdevice=no 
+local rank 0 device 0 bus id: 0000:03:00.0
+AcceleratorCudaInit: ================================================
+local rank 1 device 0 bus id: 0000:41:00.0
+Collecting data...
+Generating '/tmp/nsys-madams/nsys-report-7437.qdstrm'
+Collecting data...
+Generating '/tmp/nsys-madams/nsys-report-cf0d.qdstrm'
+Collecting data...
+Generating '/tmp/nsys-madams/nsys-report-685c.qdstrm'
+Collecting data...
+Generating '/tmp/nsys-madams/nsys-report-bb4b.qdstrm'
+[1/1] [0%                          ] nsys.rank0.nsys-rep[1/1] [0%                          ] nsys.rank0.nsys-rep[1/1] [====27%                     ] nsys.rank0.nsys-rep[1/1] [====28%                     ] nsys.rank0.nsys-rep[1/1] [=========43%                ] nsys.rank0.nsys-rep[1/1] [============57%             ] nsys.rank0.nsys-rep[1/1] [==============63%           ] nsys.rank0.nsys-rep[1/1] [================69%         ] nsys.rank0.nsys-rep[1/1] [================70%         ] nsys.rank0.nsys-rep[1/1] [================71%         ] nsys.rank0.nsys-rep[1/1] [=================72%        ] nsys.rank0.nsys-rep[1/1] [=================73%        ] nsys.rank0.nsys-rep[1/1] [=================74%        ] nsys.rank0.nsys-rep[1/1] [==================78%       ] nsys.rank0.nsys-rep[1/1] [===================79%      ] nsys.rank0.nsys-rep[1/1] [===================80%      ] nsys.rank0.nsys-rep[1/1] [====================83%     ] nsys.rank0.nsys-rep[1/1] [====================84%     ] nsys.rank0.nsys-r[1/1] [0%                          ] nsys.rank1.nsys-rep[1/1] [0%                          ] nsys.rank1.nsys-rep[1/1] [====26%                     ] nsys.rank1.nsys-rep[1/1] [====27%                     ] nsys.rank1.nsys-rep[1/1] [========42%                 ] nsys.rank1.nsys-rep[1/1] [============57%             ] nsys.rank1.nsys-rep[1/1] [==============63%           ] nsys.rank1.nsys-rep[1/1] [================69%         ] nsys.rank1.nsys-rep[1/1] [================70%         ] nsys.rank1.nsys-rep[1/1] [================71%         ] nsys.rank1.nsys-rep[1/1] [=================72%        ] nsys.rank1.nsys-rep[1/1] [=================73%        ] nsys.rank1.nsys-rep[1/1] [=================74%        ] nsys.rank1.nsys-rep[1/1] [==================75%       ] nsys.rank1.nsys-rep[1/1] [===================80%      ] nsys.rank1.nsys-rep[1/1] [===================81%      ] nsys.rank1.nsys-rep[1/1] [====================84%     ] nsys.rank1.nsys-rep[1/1] [====================85%     ] nsys.rank1.nsys-r[1/1] [0%                          ] nsys.rank2.nsys-rep[1/1] [0%                          ] nsys.rank2.nsys-rep[1/1] [====27%                     ] nsys.rank2.nsys-rep[1/1] [====28%                     ] nsys.rank2.nsys-rep[1/1] [========42%                 ] nsys.rank2.nsys-rep[1/1] [============57%             ] nsys.rank2.nsys-rep[1/1] [==============63%           ] nsys.rank2.nsys-rep[1/1] [================69%         ] nsys.rank2.nsys-rep[1/1] [================70%         ] nsys.rank2.nsys-rep[1/1] [================71%         ] nsys.rank2.nsys-rep[1/1] [=================72%        ] nsys.rank2.nsys-rep[1/1] [=================73%        ] nsys.rank2.nsys-rep[1/1] [=================74%        ] nsys.rank2.nsys-rep[1/1] [==================75%       ] nsys.rank2.nsys-rep[1/1] [===================80%      ] nsys.rank2.nsys-rep[1/1] [===================81%      ] nsys.rank2.nsys-rep[1/1] [====================84%     ] nsys.rank2.nsys-rep[1/1] [====================85%     ] nsys.rank2.nsys-r[1/1] [0%                          ] nsys.rank3.nsys-rep[1/1] [0%                          ] nsys.rank3.nsys-rep[1/1] [====27%                     ] nsys.rank3.nsys-rep[1/1] [========42%                 ] nsys.rank3.nsys-rep[1/1] [============57%             ] nsys.rank3.nsys-rep[1/1] [==============63%           ] nsys.rank3.nsys-rep[1/1] [================69%         ] nsys.rank3.nsys-rep[1/1] [================70%         ] nsys.rank3.nsys-rep[1/1] [================71%         ] nsys.rank3.nsys-rep[1/1] [=================72%        ] nsys.rank3.nsys-rep[1/1] [=================73%        ] nsys.rank3.nsys-rep[1/1] [=================74%        ] nsys.rank3.nsys-rep[1/1] [===================79%      ] nsys.rank3.nsys-rep[1/1] [===================80%      ] nsys.rank3.nsys-rep[1/1] [===================81%      ] nsys.rank3.nsys-rep[1/1] [====================83%     ] nsys.rank3.nsys-rep[1/1] [====================84%     ] nsys.rank3.nsys-rep[1/1] [====================85%     ] nsys.rank3.nsys-rep[1/1] [=====================86%    ] nsys.rank1.nsys-rep[1/1] [=====================88%    ] nsys.rank1.nsys-rep[1/1] [======================91%   ] nsys.rank1.nsys-rep[1/1] [========================99% ] nsys.rank1.nsys-rep[1/1] [========================100%] nsys.rank1.nsys-rep[1/1] [========================100%] nsys.rank1.nsys-rep
+Generated:
+	/pscratch/sd/m/madams/gridperf/runs/dwf_nsys_59452384/nsys.rank1.nsys-rep
+ep[1/1] [=====================87%    ] nsys.rank3.nsys-rep[1/1] [======================91%   ] nsys.rank3.nsys-rep[1/1] [========================99% ] nsys.rank3.nsys-rep[1/1] [========================100%] nsys.rank3.nsys-rep[1/1] [========================100%] nsys.rank3.nsys-rep
+ep[1/1] [====================85%     ] nsys.rank0.nsys-rep[1/1] [=====================87%    ] nsys.rank0.nsys-rep[1/1] [======================91%   ] nsys.rank0.nsys-rep[1/1] [========================99% ] nsys.rank0.nsys-rep[1/1] [========================100%] nsys.rank0.nsys-rep[1/1] [========================100%] nsys.rank0.nsys-rep
+Generated:
+	/pscratch/sd/m/madams/gridperf/runs/dwf_nsys_59452384/nsys.rank3.nsys-rep
+Generated:
+	/pscratch/sd/m/madams/gridperf/runs/dwf_nsys_59452384/nsys.rank0.nsys-rep
+ep[1/1] [=====================88%    ] nsys.rank2.nsys-rep[1/1] [======================91%   ] nsys.rank2.nsys-rep[1/1] [========================99% ] nsys.rank2.nsys-rep[1/1] [========================100%] nsys.rank2.nsys-rep[1/1] [========================100%] nsys.rank2.nsys-rep
+Generated:
+	/pscratch/sd/m/madams/gridperf/runs/dwf_nsys_59452384/nsys.rank2.nsys-rep
+srun: error: nid001392: task 1: Exited with exit code 1
+srun: Terminating StepId=59452384.0
+srun: error: nid001392: tasks 0,2-3: Exited with exit code 1
