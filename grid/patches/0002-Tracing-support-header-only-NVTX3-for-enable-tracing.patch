@@ -1,7 +1,7 @@
 From 4faacb88dc618049bd98a4bdb270033d70c5645b Mon Sep 17 00:00:00 2001
 From: Mark Adams <mfadams@lbl.gov>
 Date: Tue, 6 Oct 2026 17:41:30 -0400
-Subject: [PATCH 2/2] Tracing: support header-only NVTX3 for
+Subject: [PATCH 2/3] Tracing: support header-only NVTX3 for
  --enable-tracing=nvtx
 
 CUDA 13 no longer ships nvToolsExt.h or libnvToolsExt, only the header-only

@@ -1,0 +1,5 @@
+Generating SQLite file nsys.rank0.sqlite from nsys.rank0.nsys-rep
+Processing [nsys.rank0.sqlite] with [/opt/nvidia/hpc_sdk/Linux_x86_64/26.5/profilers/13.2/Nsight_Systems/host-linux-x64/reports/nvtx_sum.py] to [nsys0_nvtx_sum.csv]... PROCESSED
+
+Processing [nsys.rank0.sqlite] with [/opt/nvidia/hpc_sdk/Linux_x86_64/26.5/profilers/13.2/Nsight_Systems/host-linux-x64/reports/cuda_gpu_kern_sum.py] to [nsys0_cuda_gpu_kern_sum.csv]... PROCESSED
+

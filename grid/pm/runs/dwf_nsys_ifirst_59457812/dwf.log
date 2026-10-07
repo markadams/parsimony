@@ -1,0 +1,233 @@
+SLURM detected
+AcceleratorCudaInit[0]: ========================
+AcceleratorCudaInit[0]: Device Number    : 0
+AcceleratorCudaInit[0]: ========================
+AcceleratorCudaInit[0]: Device identifier: NVIDIA A100-SXM4-40GB
+AcceleratorCudaInit[0]:   totalGlobalMem: 42404806656 
+AcceleratorCudaInit[0]:   managedMemory: 1 
+AcceleratorCudaInit[0]:   isMultiGpuBoard: 0 
+AcceleratorCudaInit[0]:   warpSize: 32 
+AcceleratorCudaInit[0]:   pciBusID: 3 
+AcceleratorCudaInit[0]:   pciDeviceID: 0 
+AcceleratorCudaInit[0]: maxGridSize (2147483647,65535,65535)
+AcceleratorCudaInit: using default device 
+AcceleratorCudaInit: assume user either uses
+AcceleratorCudaInit: a) IBM jsrun, or 
+AcceleratorCudaInit: b) invokes through a wrapping script to set CUDA_VISIBLE_DEVICES, UCX_NET_DEVICES, and numa binding 
+AcceleratorCudaInit: Configure options --enable-setdevice=no 
+local rank 0 device 0 bus id: 0000:03:00.0
+AcceleratorCudaInit: ================================================
+SharedMemoryMpi:  World communicator of size 4
+SharedMemoryMpi:  Node  communicator of size 4
+SharedMemoryMpi:  acceleratorAllocDevice 2147483648bytes at 0x7f3b00000000 - 7f3b7fffffff for comms buffers 
+SharedMemoryMpi: Setting up IPC
+
+__|__|__|__|__|__|__|__|__|__|__|__|__|__|__
+__|__|__|__|__|__|__|__|__|__|__|__|__|__|__
+__|_ |  |  |  |  |  |  |  |  |  |  |  | _|__
+__|_                                    _|__
+__|_   GGGG    RRRR    III    DDDD      _|__
+__|_  G        R   R    I     D   D     _|__
+__|_  G        R   R    I     D    D    _|__
+__|_  G  GG    RRRR     I     D    D    _|__
+__|_  G   G    R  R     I     D   D     _|__
+__|_   GGGG    R   R   III    DDDD      _|__
+__|_                                    _|__
+__|__|__|__|__|__|__|__|__|__|__|__|__|__|__
+__|__|__|__|__|__|__|__|__|__|__|__|__|__|__
+  |  |  |  |  |  |  |  |  |  |  |  |  |  |  
+
+
+Copyright (C) 2015 Peter Boyle, Azusa Yamaguchi, Guido Cossu, Antonin Portelli and other authors
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+Current Grid git commit hash=809152caafa8d0038da3770566e878140c00d9c7: (HEAD -> madams/cuda13-build) clean
+
+Grid : Message : ================================================ 
+Grid : Message : MPI is initialised and logging filters activated 
+Grid : Message : ================================================ 
+Grid : Message : This rank is running on host nid003080 at local time 2026-10-06 17:11:36
+Grid : Message : Requested 2147483648 byte stencil comms buffers 
+Grid : Message : MemoryManager Cache 33923845324 bytes 
+Grid : Message : MemoryManager::Init() setting up
+Grid : Message : MemoryManager::Init() cache pool for recent host   allocations: SMALL 8 LARGE 2 HUGE 0
+Grid : Message : MemoryManager::Init() cache pool for recent device allocations: SMALL 16 LARGE 8 Huge 0
+Grid : Message : MemoryManager::Init() cache pool for recent shared allocations: SMALL 16 LARGE 8 Huge 0
+Grid : Message : MemoryManager::Init() Non unified: Caching accelerator data in dedicated memory
+Grid : Message : MemoryManager::Init() Using cudaMalloc
+
+
+
+
+
+
+
+Grid : Message : 0.000882 s : ++++++++++++++++++++++++++++++++++++++++++++++++
+Grid : Message : 0.000895 s :  Testing with full communication 
+Grid : Message : 0.000898 s : ++++++++++++++++++++++++++++++++++++++++++++++++
+Grid : Message : 0.000904 s : Grid Layout
+Grid : Message : 0.000906 s : 	Global lattice size  : 16 8 24 48 
+Grid : Message : 0.000914 s : 	OpenMP threads       : 32
+Grid : Message : 0.000917 s : 	MPI tasks            : 1 1 2 2 
+Grid : Message : 0.010846 s : Initialising 4d RNG
+Grid : Message : 0.017452 s : Intialising parallel RNG with unique string 'The 4D RNG'
+Grid : Message : 0.017459 s : Seed SHA256: 49db4542db694e3b1a74bf2592a8c1b83bfebbe18401693c2609a4c3af1
+Grid : Message : 0.035228 s : Initialising 5d RNG
+Grid : Message : 0.125243 s : Intialising parallel RNG with unique string 'The 5D RNG'
+Grid : Message : 0.125258 s : Seed SHA256: b6316f2fac44ce14111f93e0296389330b077bfd0a7b359f781c58589f8a
+local rank 2 device 0 bus id: 0000:82:00.0
+local rank 3 device 0 bus id: 0000:C1:00.0
+local rank 1 device 0 bus id: 0000:41:00.0
+Grid : Message : 0.223365 s : Drawing gauge field
+Grid : Message : 0.253713 s : Random gauge initialised 
+Grid : Message : 0.253846 s : Applying BCs for Dirichlet Block5 [0 0 0 0 0]
+Grid : Message : 0.253928 s : Applying BCs for Dirichlet Block4 [0 0 0 0]
+Grid : Message : 0.260570 s : Setting up Cshift based reference 
+Grid : Message : 2.447960 s : *****************************************************************
+Grid : Message : 2.447971 s : * Kernel options --dslash-generic, --dslash-unroll, --dslash-asm
+Grid : Message : 2.447974 s : *****************************************************************
+Grid : Message : 2.447977 s : *****************************************************************
+Grid : Message : 2.447980 s : * Benchmarking DomainWallFermionR::Dhop                  
+Grid : Message : 2.447983 s : * Vectorising space-time by 4
+Grid : Message : 2.447986 s : * VComplex size is 64 B
+Grid : Message : 2.447989 s : * Using Overlapped Comms/Compute
+Grid : Message : 2.447992 s : * Using GENERIC Nc WilsonKernels
+Grid : Message : 2.447994 s : *****************************************************************
+Grid : Message : 2.626062 s : Called warmup
+Grid : Message : 2.957606 s : Called Dw 300 times in 331495 us
+Grid : Message : 2.957627 s : mflop/s =   4227580.58
+Grid : Message : 2.957631 s : mflop/s per rank =  1056895.14
+Grid : Message : 2.957634 s : mflop/s per node =  4227580.58
+Grid : Message : 2.957744 s : Comms: off-node bytes/call/node = 0 MB
+Grid : Message : 2.957749 s : Comms: in-exchange time = 397.263333 us/call (mean over 4 ranks)
+Grid : Message : 2.957761 s : Comms: delivered inter-node bandwidth = 0 MB/s per node  (0 GB/s per node, 1 nodes)
+Grid : Message : 2.962666 s : norm diff   2.01241964e-31  Line 338
+Grid : Message : 5.727474 s : ----------------------------------------------------------------
+Grid : Message : 5.727490 s : Compare to naive wilson implementation Dag to verify correctness
+Grid : Message : 5.727493 s : ----------------------------------------------------------------
+Grid : Message : 5.727496 s : Called DwDag
+Grid : Message : 5.727499 s : norm dag result 4.13029174
+Grid : Message : 5.727824 s : norm dag ref    4.13029174
+Grid : Message : 5.728753 s : norm dag diff   1.1878687e-31  Line 409
+Grid : Message : 5.730691 s : Calling Deo and Doe and //assert Deo+Doe == Dunprec
+Grid : Message : 5.767645 s : src_e0.500029652
+Grid : Message : 5.775613 s : src_o0.499970348
+Grid : Message : 5.782490 s : *********************************************************
+Grid : Message : 5.782494 s : * Benchmarking DomainWallFermion::DhopEO                
+Grid : Message : 5.782497 s : * Vectorising space-time by 4
+Grid : Message : 5.782500 s : * Using Overlapped Comms/Compute
+Grid : Message : 5.782503 s : * Using GENERIC Nc WilsonKernels
+Grid : Message : 5.782506 s : *********************************************************
+Grid : Message : 5.954703 s : Deo mflop/s =   4133109.85
+Grid : Message : 5.954716 s : Deo mflop/s per rank   1033277.46
+Grid : Message : 5.954720 s : Deo mflop/s per node   4133109.85
+Grid : Message : 5.954817 s : Deo comms: delivered inter-node bandwidth = 0 MB/s per node
+Grid : Message : 5.959073 s : r_e2.06327653
+Grid : Message : 5.959293 s : r_o2.06668642
+Grid : Message : 5.959477 s : res4.12996295
+Grid : Message : 6.024189 s : norm diff   0
+Grid : Message : 6.059852 s : norm diff even  0
+Grid : Message : 6.067284 s : norm diff odd   0
+
+
+
+
+
+
+
+Grid : Message : 6.126242 s : ++++++++++++++++++++++++++++++++++++++++++++++++
+Grid : Message : 6.126248 s :  Testing with sloppy communication 
+Grid : Message : 6.126251 s : ++++++++++++++++++++++++++++++++++++++++++++++++
+Grid : Message : 6.126255 s : Grid Layout
+Grid : Message : 6.126257 s : 	Global lattice size  : 16 8 24 48 
+Grid : Message : 6.126265 s : 	OpenMP threads       : 32
+Grid : Message : 6.126268 s : 	MPI tasks            : 1 1 2 2 
+Grid : Message : 6.138826 s : Initialising 4d RNG
+Grid : Message : 6.140503 s : Intialising parallel RNG with unique string 'The 4D RNG'
+Grid : Message : 6.140509 s : Seed SHA256: 49db4542db694e3b1a74bf2592a8c1b83bfebbe18401693c2609a4c3af1
+Grid : Message : 6.147632 s : Initialising 5d RNG
+Grid : Message : 6.227443 s : Intialising parallel RNG with unique string 'The 5D RNG'
+Grid : Message : 6.227458 s : Seed SHA256: b6316f2fac44ce14111f93e0296389330b077bfd0a7b359f781c58589f8a
+Grid : Message : 6.297325 s : Drawing gauge field
+Grid : Message : 6.319680 s : Random gauge initialised 
+Grid : Message : 6.319731 s : Applying BCs for Dirichlet Block5 [0 0 0 0 0]
+Grid : Message : 6.319756 s : Applying BCs for Dirichlet Block4 [0 0 0 0]
+Grid : Message : 6.321118 s : Setting up Cshift based reference 
+Grid : Message : 8.451665 s : *****************************************************************
+Grid : Message : 8.451679 s : * Kernel options --dslash-generic, --dslash-unroll, --dslash-asm
+Grid : Message : 8.451683 s : *****************************************************************
+Grid : Message : 8.451686 s : *****************************************************************
+Grid : Message : 8.451689 s : * Benchmarking DomainWallFermionR::Dhop                  
+Grid : Message : 8.451692 s : * Vectorising space-time by 4
+Grid : Message : 8.451695 s : * VComplex size is 64 B
+Grid : Message : 8.451699 s : * Using Overlapped Comms/Compute
+Grid : Message : 8.451702 s : * Using GENERIC Nc WilsonKernels
+Grid : Message : 8.451705 s : *****************************************************************
+Grid : Message : 8.648121 s : Called warmup
+Grid : Message : 8.980892 s : Called Dw 300 times in 332632 us
+Grid : Message : 8.980910 s : mflop/s =   4213129.9
+Grid : Message : 8.980915 s : mflop/s per rank =  1053282.47
+Grid : Message : 8.980919 s : mflop/s per node =  4213129.9
+Grid : Message : 8.981050 s : Comms: off-node bytes/call/node = 0 MB
+Grid : Message : 8.981054 s : Comms: in-exchange time = 397.6975 us/call (mean over 4 ranks)
+Grid : Message : 8.981058 s : Comms: delivered inter-node bandwidth = 0 MB/s per node  (0 GB/s per node, 1 nodes)
+Grid : Message : 9.009243 s : norm diff   2.01241964e-31  Line 338
+Grid : Message : 11.770101 s : ----------------------------------------------------------------
+Grid : Message : 11.770116 s : Compare to naive wilson implementation Dag to verify correctness
+Grid : Message : 11.770119 s : ----------------------------------------------------------------
+Grid : Message : 11.770122 s : Called DwDag
+Grid : Message : 11.770125 s : norm dag result 4.13029174
+Grid : Message : 11.770441 s : norm dag ref    4.13029174
+Grid : Message : 11.771399 s : norm dag diff   1.1878687e-31  Line 409
+Grid : Message : 11.773231 s : Calling Deo and Doe and //assert Deo+Doe == Dunprec
+Grid : Message : 11.810057 s : src_e0.500029652
+Grid : Message : 11.824430 s : src_o0.499970348
+Grid : Message : 11.831277 s : *********************************************************
+Grid : Message : 11.831281 s : * Benchmarking DomainWallFermion::DhopEO                
+Grid : Message : 11.831284 s : * Vectorising space-time by 4
+Grid : Message : 11.831287 s : * Using Overlapped Comms/Compute
+Grid : Message : 11.831290 s : * Using GENERIC Nc WilsonKernels
+Grid : Message : 11.831293 s : *********************************************************
+Grid : Message : 12.033255 s : Deo mflop/s =   3516565.85
+Grid : Message : 12.033268 s : Deo mflop/s per rank   879141.463
+Grid : Message : 12.033272 s : Deo mflop/s per node   3516565.85
+Grid : Message : 12.033400 s : Deo comms: delivered inter-node bandwidth = 0 MB/s per node
+Grid : Message : 12.037787 s : r_e2.06327653
+Grid : Message : 12.038085 s : r_o2.06668642
+Grid : Message : 12.038286 s : res4.12996295
+Grid : Message : 12.110773 s : norm diff   0
+Grid : Message : 12.146684 s : norm diff even  0
+Grid : Message : 12.153818 s : norm diff odd   0
+Grid : Message : 12.212458 s : ********************************************
+Grid : Message : 12.212471 s : ******* Grid Finalize                 ******
+Grid : Message : 12.213948 s : ******* Grid Finalize synched         ******
+Grid : Message : 12.234402 s : ******* Grid Finalize successful     ******
+Grid : Message : 12.234414 s : *******************************************
+Collecting data...
+Generating '/tmp/nsys-madams/nsys-report-6ae4.qdstrm'
+Collecting data...
+Generating '/tmp/nsys-madams/nsys-report-ab5c.qdstrm'
+Collecting data...
+Generating '/tmp/nsys-madams/nsys-report-f3a1.qdstrm'
+Collecting data...
+Generating '/tmp/nsys-madams/nsys-report-762a.qdstrm'
+[1/1] [0%                          ] nsys.rank1.nsys-rep[1/1] [0%                          ] nsys.rank1.nsys-rep[1/1] [14%                         ] nsys.rank1.nsys-rep[1/1] [==20%                       ] nsys.rank1.nsys-rep[1/1] [===22%                      ] nsys.rank1.nsys-rep[1/1] [===23%                      ] nsys.rank1.nsys-rep[1/1] [====27%                     ] nsys.rank1.nsys-rep[1/1] [====28%                     ] nsys.rank1.nsys-rep[1/1] [=====29%                    ] nsys.rank1.nsys-rep[1/1] [======35%                   ] nsys.rank1.nsys-rep[1/1] [========42%                 ] nsys.rank1.nsys-rep[1/1] [==========48%               ] nsys.rank1.nsys-rep[1/1] [===========52%              ] nsys.rank1.nsys-rep[1/1] [===========53%              ] nsys.rank1.nsys-rep[1/1] [============54%             ] nsys.rank1.nsys-rep[1/1] [============56%             ] nsys.rank1.nsys-rep[1/1] [=============58%            ] nsys.rank1.nsys-rep[1/1] [=============60%            ] nsys.rank1.nsys-r[1/1] [0%                          ] nsys.rank3.nsys-rep[1/1] [0%                          ] nsys.rank3.nsys-rep[1/1] [14%                         ] nsys.rank3.nsys-rep[1/1] [==20%                       ] nsys.rank3.nsys-rep[1/1] [===24%                      ] nsys.rank3.nsys-rep[1/1] [====26%                     ] nsys.rank3.nsys-rep[1/1] [====28%                     ] nsys.rank3.nsys-rep[1/1] [=====29%                    ] nsys.rank3.nsys-rep[1/1] [======35%                   ] nsys.rank3.nsys-rep[1/1] [========42%                 ] nsys.rank3.nsys-rep[1/1] [==========48%               ] nsys.rank3.nsys-rep[1/1] [===========52%              ] nsys.rank3.nsys-rep[1/1] [===========53%              ] nsys.rank3.nsys-rep[1/1] [============55%             ] nsys.rank3.nsys-rep[1/1] [============57%             ] nsys.rank3.nsys-rep[1/1] [=============58%            ] nsys.rank3.nsys-rep[1/1] [=============60%            ] nsys.rank3.nsys-rep[1/1] [==============62%           ] nsys.rank3.nsys-r[1/1] [0%                          ] nsys.rank2.nsys-rep[1/1] [0%                          ] nsys.rank2.nsys-rep[1/1] [14%                         ] nsys.rank2.nsys-rep[1/1] [==20%                       ] nsys.rank2.nsys-rep[1/1] [===24%                      ] nsys.rank2.nsys-rep[1/1] [====26%                     ] nsys.rank2.nsys-rep[1/1] [====28%                     ] nsys.rank2.nsys-rep[1/1] [=====29%                    ] nsys.rank2.nsys-rep[1/1] [======35%                   ] nsys.rank2.nsys-rep[1/1] [========42%                 ] nsys.rank2.nsys-rep[1/1] [==========48%               ] nsys.rank2.nsys-rep[1/1] [===========52%              ] nsys.rank2.nsys-rep[1/1] [===========53%              ] nsys.rank2.nsys-rep[1/1] [============55%             ] nsys.rank2.nsys-rep[1/1] [============57%             ] nsys.rank2.nsys-rep[1/1] [=============58%            ] nsys.rank2.nsys-rep[1/1] [=============60%            ] nsys.rank2.nsys-rep[1/1] [==============62%           ] nsys.rank2.nsys-r[1/1] [0%                          ] nsys.rank0.nsys-rep[1/1] [0%                          ] nsys.rank0.nsys-rep[1/1] [6%                          ] nsys.rank0.nsys-rep[1/1] [==20%                       ] nsys.rank0.nsys-rep[1/1] [===24%                      ] nsys.rank0.nsys-rep[1/1] [====26%                     ] nsys.rank0.nsys-rep[1/1] [====28%                     ] nsys.rank0.nsys-rep[1/1] [=====29%                    ] nsys.rank0.nsys-rep[1/1] [======35%                   ] nsys.rank0.nsys-rep[1/1] [========42%                 ] nsys.rank0.nsys-rep[1/1] [==========48%               ] nsys.rank0.nsys-rep[1/1] [===========52%              ] nsys.rank0.nsys-rep[1/1] [===========53%              ] nsys.rank0.nsys-rep[1/1] [============55%             ] nsys.rank0.nsys-rep[1/1] [============57%             ] nsys.rank0.nsys-rep[1/1] [=============58%            ] nsys.rank0.nsys-rep[1/1] [=============60%            ] nsys.rank0.nsys-rep[1/1] [==============62%           ] nsys.rank0.nsys-rep[1/1] [==============62%           ] nsys.rank1.nsys-rep[1/1] [==============64%           ] nsys.rank1.nsys-rep[1/1] [===============66%          ] nsys.rank1.nsys-rep[1/1] [========================100%] nsys.rank1.nsys-rep[1/1] [========================100%] nsys.rank1.nsys-rep
+Generated:
+	/pscratch/sd/m/madams/gridperf/runs/dwf_nsys_ifirst_59457812/nsys.rank1.nsys-rep
+ep[1/1] [==============64%           ] nsys.rank0.nsys-rep[1/1] [===============66%          ] nsys.rank0.nsys-rep[1/1] [========================100%] nsys.rank0.nsys-rep[1/1] [========================100%] nsys.rank0.nsys-rep
+ep[1/1] [==============64%           ] nsys.rank2.nsys-rep[1/1] [===============66%          ] nsys.rank2.nsys-rep[1/1] [========================100%] nsys.rank2.nsys-rep[1/1] [========================100%] nsys.rank2.nsys-rep
+Generated:
+	/pscratch/sd/m/madams/gridperf/runs/dwf_nsys_ifirst_59457812/nsys.rank0.nsys-rep
+Generated:
+	/pscratch/sd/m/madams/gridperf/runs/dwf_nsys_ifirst_59457812/nsys.rank2.nsys-rep
+ep[1/1] [==============64%           ] nsys.rank3.nsys-rep[1/1] [===============66%          ] nsys.rank3.nsys-rep[1/1] [========================100%] nsys.rank3.nsys-rep[1/1] [========================100%] nsys.rank3.nsys-rep
+Generated:
+	/pscratch/sd/m/madams/gridperf/runs/dwf_nsys_ifirst_59457812/nsys.rank3.nsys-rep

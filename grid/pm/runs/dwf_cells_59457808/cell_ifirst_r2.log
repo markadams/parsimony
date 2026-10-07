@@ -1,0 +1,213 @@
+SLURM detected
+AcceleratorCudaInit[0]: ========================
+AcceleratorCudaInit[0]: Device Number    : 0
+AcceleratorCudaInit[0]: ========================
+AcceleratorCudaInit[0]: Device identifier: NVIDIA A100-SXM4-40GB
+AcceleratorCudaInit[0]:   totalGlobalMem: 42404806656 
+AcceleratorCudaInit[0]:   managedMemory: 1 
+AcceleratorCudaInit[0]:   isMultiGpuBoard: 0 
+AcceleratorCudaInit[0]:   warpSize: 32 
+AcceleratorCudaInit[0]:   pciBusID: 3 
+AcceleratorCudaInit[0]:   pciDeviceID: 0 
+AcceleratorCudaInit[0]: maxGridSize (2147483647,65535,65535)
+AcceleratorCudaInit: using default device 
+AcceleratorCudaInit: assume user either uses
+AcceleratorCudaInit: a) IBM jsrun, or 
+AcceleratorCudaInit: b) invokes through a wrapping script to set CUDA_VISIBLE_DEVICES, UCX_NET_DEVICES, and numa binding 
+AcceleratorCudaInit: Configure options --enable-setdevice=no 
+local rank 0 device 0 bus id: 0000:03:00.0
+AcceleratorCudaInit: ================================================
+SharedMemoryMpi:  World communicator of size 4
+SharedMemoryMpi:  Node  communicator of size 4
+SharedMemoryMpi:  acceleratorAllocDevice 2147483648bytes at 0x7eff80000000 - 7effffffffff for comms buffers 
+SharedMemoryMpi: Setting up IPC
+
+__|__|__|__|__|__|__|__|__|__|__|__|__|__|__
+__|__|__|__|__|__|__|__|__|__|__|__|__|__|__
+__|_ |  |  |  |  |  |  |  |  |  |  |  | _|__
+__|_                                    _|__
+__|_   GGGG    RRRR    III    DDDD      _|__
+__|_  G        R   R    I     D   D     _|__
+__|_  G        R   R    I     D    D    _|__
+__|_  G  GG    RRRR     I     D    D    _|__
+__|_  G   G    R  R     I     D   D     _|__
+__|_   GGGG    R   R   III    DDDD      _|__
+__|_                                    _|__
+__|__|__|__|__|__|__|__|__|__|__|__|__|__|__
+__|__|__|__|__|__|__|__|__|__|__|__|__|__|__
+  |  |  |  |  |  |  |  |  |  |  |  |  |  |  
+
+
+Copyright (C) 2015 Peter Boyle, Azusa Yamaguchi, Guido Cossu, Antonin Portelli and other authors
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+Current Grid git commit hash=809152caafa8d0038da3770566e878140c00d9c7: (HEAD -> madams/cuda13-build) clean
+
+Grid : Message : ================================================ 
+Grid : Message : MPI is initialised and logging filters activated 
+Grid : Message : ================================================ 
+Grid : Message : This rank is running on host nid002024 at local time 2026-10-06 17:08:54
+Grid : Message : Requested 2147483648 byte stencil comms buffers 
+Grid : Message : MemoryManager Cache 33923845324 bytes 
+Grid : Message : MemoryManager::Init() setting up
+Grid : Message : MemoryManager::Init() cache pool for recent host   allocations: SMALL 8 LARGE 2 HUGE 0
+Grid : Message : MemoryManager::Init() cache pool for recent device allocations: SMALL 16 LARGE 8 Huge 0
+Grid : Message : MemoryManager::Init() cache pool for recent shared allocations: SMALL 16 LARGE 8 Huge 0
+Grid : Message : MemoryManager::Init() Non unified: Caching accelerator data in dedicated memory
+Grid : Message : MemoryManager::Init() Using cudaMalloc
+
+
+
+
+
+
+
+Grid : Message : 0.000649 s : ++++++++++++++++++++++++++++++++++++++++++++++++
+Grid : Message : 0.000660 s :  Testing with full communication 
+Grid : Message : 0.000663 s : ++++++++++++++++++++++++++++++++++++++++++++++++
+Grid : Message : 0.000668 s : Grid Layout
+Grid : Message : 0.000670 s : 	Global lattice size  : 16 8 24 48 
+Grid : Message : 0.000674 s : 	OpenMP threads       : 32
+Grid : Message : 0.000677 s : 	MPI tasks            : 1 1 2 2 
+Grid : Message : 0.009337 s : Initialising 4d RNG
+Grid : Message : 0.016279 s : Intialising parallel RNG with unique string 'The 4D RNG'
+Grid : Message : 0.016287 s : Seed SHA256: 49db4542db694e3b1a74bf2592a8c1b83bfebbe18401693c2609a4c3af1
+Grid : Message : 0.020169 s : Initialising 5d RNG
+Grid : Message : 0.102743 s : Intialising parallel RNG with unique string 'The 5D RNG'
+Grid : Message : 0.102758 s : Seed SHA256: b6316f2fac44ce14111f93e0296389330b077bfd0a7b359f781c58589f8a
+local rank 2 device 0 bus id: 0000:82:00.0
+local rank 1 device 0 bus id: 0000:41:00.0
+local rank 3 device 0 bus id: 0000:C1:00.0
+Grid : Message : 0.177092 s : Drawing gauge field
+Grid : Message : 0.202182 s : Random gauge initialised 
+Grid : Message : 0.202273 s : Applying BCs for Dirichlet Block5 [0 0 0 0 0]
+Grid : Message : 0.202333 s : Applying BCs for Dirichlet Block4 [0 0 0 0]
+Grid : Message : 0.204632 s : Setting up Cshift based reference 
+Grid : Message : 2.248603 s : *****************************************************************
+Grid : Message : 2.248618 s : * Kernel options --dslash-generic, --dslash-unroll, --dslash-asm
+Grid : Message : 2.248621 s : *****************************************************************
+Grid : Message : 2.248624 s : *****************************************************************
+Grid : Message : 2.248627 s : * Benchmarking DomainWallFermionR::Dhop                  
+Grid : Message : 2.248629 s : * Vectorising space-time by 4
+Grid : Message : 2.248632 s : * VComplex size is 64 B
+Grid : Message : 2.248635 s : * Using Overlapped Comms/Compute
+Grid : Message : 2.248638 s : * Using GENERIC Nc WilsonKernels
+Grid : Message : 2.248641 s : *****************************************************************
+Grid : Message : 2.332040 s : Called warmup
+Grid : Message : 2.660692 s : Called Dw 300 times in 328498 us
+Grid : Message : 2.660714 s : mflop/s =   4266150.25
+Grid : Message : 2.660718 s : mflop/s per rank =  1066537.56
+Grid : Message : 2.660722 s : mflop/s per node =  4266150.25
+Grid : Message : 2.660806 s : Comms: off-node bytes/call/node = 0 MB
+Grid : Message : 2.660810 s : Comms: in-exchange time = 381.005833 us/call (mean over 4 ranks)
+Grid : Message : 2.660819 s : Comms: delivered inter-node bandwidth = 0 MB/s per node  (0 GB/s per node, 1 nodes)
+Grid : Message : 2.662216 s : norm diff   2.01241964e-31  Line 338
+Grid : Message : 5.540764 s : ----------------------------------------------------------------
+Grid : Message : 5.540779 s : Compare to naive wilson implementation Dag to verify correctness
+Grid : Message : 5.540782 s : ----------------------------------------------------------------
+Grid : Message : 5.540785 s : Called DwDag
+Grid : Message : 5.540788 s : norm dag result 4.13029174
+Grid : Message : 5.541068 s : norm dag ref    4.13029174
+Grid : Message : 5.541941 s : norm dag diff   1.1878687e-31  Line 409
+Grid : Message : 5.547494 s : Calling Deo and Doe and //assert Deo+Doe == Dunprec
+Grid : Message : 5.584397 s : src_e0.500029652
+Grid : Message : 5.591710 s : src_o0.499970348
+Grid : Message : 5.598562 s : *********************************************************
+Grid : Message : 5.598566 s : * Benchmarking DomainWallFermion::DhopEO                
+Grid : Message : 5.598569 s : * Vectorising space-time by 4
+Grid : Message : 5.598572 s : * Using Overlapped Comms/Compute
+Grid : Message : 5.598575 s : * Using GENERIC Nc WilsonKernels
+Grid : Message : 5.598578 s : *********************************************************
+Grid : Message : 5.760799 s : Deo mflop/s =   4387917.37
+Grid : Message : 5.760810 s : Deo mflop/s per rank   1096979.34
+Grid : Message : 5.760814 s : Deo mflop/s per node   4387917.37
+Grid : Message : 5.760903 s : Deo comms: delivered inter-node bandwidth = 0 MB/s per node
+Grid : Message : 5.765012 s : r_e2.06327653
+Grid : Message : 5.765196 s : r_o2.06668642
+Grid : Message : 5.765362 s : res4.12996295
+Grid : Message : 5.828921 s : norm diff   0
+Grid : Message : 5.864645 s : norm diff even  0
+Grid : Message : 5.884187 s : norm diff odd   0
+
+
+
+
+
+
+
+Grid : Message : 5.943872 s : ++++++++++++++++++++++++++++++++++++++++++++++++
+Grid : Message : 5.943877 s :  Testing with sloppy communication 
+Grid : Message : 5.943880 s : ++++++++++++++++++++++++++++++++++++++++++++++++
+Grid : Message : 5.943884 s : Grid Layout
+Grid : Message : 5.943886 s : 	Global lattice size  : 16 8 24 48 
+Grid : Message : 5.943893 s : 	OpenMP threads       : 32
+Grid : Message : 5.943896 s : 	MPI tasks            : 1 1 2 2 
+Grid : Message : 5.955731 s : Initialising 4d RNG
+Grid : Message : 5.957505 s : Intialising parallel RNG with unique string 'The 4D RNG'
+Grid : Message : 5.957512 s : Seed SHA256: 49db4542db694e3b1a74bf2592a8c1b83bfebbe18401693c2609a4c3af1
+Grid : Message : 5.957857 s : Initialising 5d RNG
+Grid : Message : 6.036538 s : Intialising parallel RNG with unique string 'The 5D RNG'
+Grid : Message : 6.036553 s : Seed SHA256: b6316f2fac44ce14111f93e0296389330b077bfd0a7b359f781c58589f8a
+Grid : Message : 6.096735 s : Drawing gauge field
+Grid : Message : 6.117135 s : Random gauge initialised 
+Grid : Message : 6.117150 s : Applying BCs for Dirichlet Block5 [0 0 0 0 0]
+Grid : Message : 6.117157 s : Applying BCs for Dirichlet Block4 [0 0 0 0]
+Grid : Message : 6.118746 s : Setting up Cshift based reference 
+Grid : Message : 8.139678 s : *****************************************************************
+Grid : Message : 8.139691 s : * Kernel options --dslash-generic, --dslash-unroll, --dslash-asm
+Grid : Message : 8.139694 s : *****************************************************************
+Grid : Message : 8.139697 s : *****************************************************************
+Grid : Message : 8.139699 s : * Benchmarking DomainWallFermionR::Dhop                  
+Grid : Message : 8.139702 s : * Vectorising space-time by 4
+Grid : Message : 8.139705 s : * VComplex size is 64 B
+Grid : Message : 8.139708 s : * Using Overlapped Comms/Compute
+Grid : Message : 8.139711 s : * Using GENERIC Nc WilsonKernels
+Grid : Message : 8.139713 s : *****************************************************************
+Grid : Message : 8.220078 s : Called warmup
+Grid : Message : 8.548729 s : Called Dw 300 times in 328472 us
+Grid : Message : 8.548745 s : mflop/s =   4266487.93
+Grid : Message : 8.548749 s : mflop/s per rank =  1066621.98
+Grid : Message : 8.548752 s : mflop/s per node =  4266487.93
+Grid : Message : 8.548854 s : Comms: off-node bytes/call/node = 0 MB
+Grid : Message : 8.548858 s : Comms: in-exchange time = 381.066667 us/call (mean over 4 ranks)
+Grid : Message : 8.548869 s : Comms: delivered inter-node bandwidth = 0 MB/s per node  (0 GB/s per node, 1 nodes)
+Grid : Message : 8.550702 s : norm diff   2.01241964e-31  Line 338
+Grid : Message : 11.428572 s : ----------------------------------------------------------------
+Grid : Message : 11.428586 s : Compare to naive wilson implementation Dag to verify correctness
+Grid : Message : 11.428590 s : ----------------------------------------------------------------
+Grid : Message : 11.428593 s : Called DwDag
+Grid : Message : 11.428596 s : norm dag result 4.13029174
+Grid : Message : 11.428888 s : norm dag ref    4.13029174
+Grid : Message : 11.429768 s : norm dag diff   1.1878687e-31  Line 409
+Grid : Message : 11.431486 s : Calling Deo and Doe and //assert Deo+Doe == Dunprec
+Grid : Message : 11.468308 s : src_e0.500029652
+Grid : Message : 11.475841 s : src_o0.499970348
+Grid : Message : 11.482698 s : *********************************************************
+Grid : Message : 11.482702 s : * Benchmarking DomainWallFermion::DhopEO                
+Grid : Message : 11.482705 s : * Vectorising space-time by 4
+Grid : Message : 11.482708 s : * Using Overlapped Comms/Compute
+Grid : Message : 11.482711 s : * Using GENERIC Nc WilsonKernels
+Grid : Message : 11.482714 s : *********************************************************
+Grid : Message : 11.666030 s : Deo mflop/s =   3878831.51
+Grid : Message : 11.666042 s : Deo mflop/s per rank   969707.877
+Grid : Message : 11.666046 s : Deo mflop/s per node   3878831.51
+Grid : Message : 11.666149 s : Deo comms: delivered inter-node bandwidth = 0 MB/s per node
+Grid : Message : 11.670370 s : r_e2.06327653
+Grid : Message : 11.670586 s : r_o2.06668642
+Grid : Message : 11.670764 s : res4.12996295
+Grid : Message : 11.734307 s : norm diff   0
+Grid : Message : 11.769945 s : norm diff even  0
+Grid : Message : 11.776892 s : norm diff odd   0
+Grid : Message : 11.835989 s : ********************************************
+Grid : Message : 11.835999 s : ******* Grid Finalize                 ******
+Grid : Message : 11.836912 s : ******* Grid Finalize synched         ******
+Grid : Message : 11.851453 s : ******* Grid Finalize successful     ******
+Grid : Message : 11.851461 s : *******************************************

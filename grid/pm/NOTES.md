@@ -46,6 +46,10 @@ which gives 16x8x12x24 per GPU, Peter's production local volume. Modes:
 | 59452275 | base, generic kernel, fp64 | Dw 1.174 ms/call/GPU, 995 GF/s/GPU; Deo 979 GF/s; halo exchange 0.386 ms/call (on-node, overlapped); norm diff 2e-31 |
 | 59452383 | ncu, rank 0, 16 kernels, `--set full` | see "Counters" below |
 | 59452384 | nsys | failed: `-t mpi` interposer calls MPI before Grid's `MPI_Init` (Grid starts the GPU first). Rerun without MPI tracing |
+| 59456440 | ncu, `Benchmark_dwf_fp32` | see "fp32 interior" below |
+| 59457808 | cells: base, ifirst, rr64, rr80, rr64+ifirst, unroll+ifirst, 2 reps | see FINDINGS-2026-10-06.md |
+| 59457809 / 59457811 | ncu, build-rr64 / build-rr80 | spills 7.4 M / 2.8 M; DRAM 2310 / 877 MB |
+| 59457812 | nsys, GRID_DHOP_INTERIOR_FIRST=1 | interior starts at +10 us, runs 862 us (was 756); comms hidden |
 | 59452756 | nsys `-t cuda,nvtx` | see "Timeline" below; Dw 1.21 ms/call under nsys |
 | 59452387 | base `--dslash-unroll` | Dw 1.118 ms/call (−5%), 1044 GF/s; Deo +9%; norm diff 2e-31 |
 | 59452411 | base, `Benchmark_dwf_fp32` | Dw 0.505 ms/call, 2314 GF/s = **2.33x fp64**; norm diff 6e-14 |
@@ -139,3 +143,24 @@ the four neighbours also run one after another on one stream.
 | 2 | gather + host gap before interior (overlap them) | up to ~17% |
 | 3 | `--dslash-unroll` (measured) | 5% |
 | 4 | fp32 fine operator (measured; changes precision) | 57% (2.33x) |
+
+## fp32 interior kernel (job 59456440): the register explanation holds
+
+| interior kernel | fp64 | fp32 |
+|---|---|---|
+| registers per thread | 104 | 69 |
+| block (Nsimd x 8 threads) | 32 | 64 |
+| warps per SM, register limit | 16 | 28 |
+| occupancy theoretical / achieved | 25% / 24% | 44% / 40% |
+| eligible warps per cycle | 0.13 | 0.57 |
+| issue-active | 10% | 32% |
+| DRAM bytes | 695 MB | 214 MB (0.31x) |
+| L2 hit rate | 64% | 77% |
+
+fp32 has 1.75x the resident warps and 4x the eligible warps, which is why it gains more than 2x.
+It also moves only 0.31x the DRAM bytes of fp64, not the 0.5x that halving each value would
+give, and its L2 hit rate rises 64% to 77%. Halving the working set lets neighbour spinors
+stay in the 40 MB L2. So the fp64 kernel also loses L2 reuse: its 695 MB is 1.8x the 382 MB
+minimum. Hypothesis, not tested: cache blocking the fp64 site loop for L2 reuse.
+
+**Write-up: `grid/FINDINGS-2026-10-06.md`.** Jobs up to 59457812 ran on m1516_g; from now on m1489_g.

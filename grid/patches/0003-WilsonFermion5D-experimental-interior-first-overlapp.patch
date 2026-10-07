@@ -1,0 +1,101 @@
+From 5e8eeb30fa5af473ebf33f7bda64a6819f4a71db Mon Sep 17 00:00:00 2001
+From: Mark Adams <mfadams@lbl.gov>
+Date: Tue, 6 Oct 2026 19:43:17 -0400
+Subject: [PATCH 3/3] WilsonFermion5D: experimental interior-first overlapped
+ Dhop
+
+With GRID_DHOP_INTERIOR_FIRST=1, DhopInternalOverlappedComms launches the
+interior kernel first. The halo gathers and comms then run on a
+high-priority side stream, so the interior no longer waits behind them.
+Merge and exterior follow on the compute stream as before. Off by default.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../WilsonFermion5DImplementation.h           | 64 +++++++++++++++++++
+ 1 file changed, 64 insertions(+)
+
+diff --git a/Grid/qcd/action/fermion/implementation/WilsonFermion5DImplementation.h b/Grid/qcd/action/fermion/implementation/WilsonFermion5DImplementation.h
+index 48ec71bf..f653501b 100644
+--- a/Grid/qcd/action/fermion/implementation/WilsonFermion5DImplementation.h
++++ b/Grid/qcd/action/fermion/implementation/WilsonFermion5DImplementation.h
+@@ -311,6 +311,31 @@ void WilsonFermion5D<Impl>::DhopInternal(StencilImpl & st,
+ }
+ 
+ 
++#if defined(GRID_CUDA) || defined(GRID_HIP)
++// Experimental (GRID_DHOP_INTERIOR_FIRST=1): a high-priority side stream for the halo
++// gathers and comms, so the interior kernel need not wait for them.
++inline int DhopInteriorFirst(void)
++{
++  static int on = getenv("GRID_DHOP_INTERIOR_FIRST") ? atoi(getenv("GRID_DHOP_INTERIOR_FIRST")) : 0;
++  return on;
++}
++#ifdef GRID_CUDA
++inline cudaStream_t DhopSideStream(void)
++{
++  static cudaStream_t s = [] { int lo, hi; cudaStream_t t;
++    cudaDeviceGetStreamPriorityRange(&lo, &hi); cudaStreamCreateWithPriority(&t, cudaStreamDefault, hi); return t; }();
++  return s;
++}
++#else
++inline hipStream_t DhopSideStream(void)
++{
++  static hipStream_t s = [] { int lo, hi; hipStream_t t;
++    auto e = hipDeviceGetStreamPriorityRange(&lo, &hi); e = hipStreamCreateWithPriority(&t, hipStreamDefault, hi); (void)e; return t; }();
++  return s;
++}
++#endif
++#endif
++
+ template<class Impl>
+ void WilsonFermion5D<Impl>::DhopInternalOverlappedComms(StencilImpl & st,
+ 							DoubledGaugeField & U,
+@@ -322,6 +347,45 @@ void WilsonFermion5D<Impl>::DhopInternalOverlappedComms(StencilImpl & st,
+   int LLs = in.Grid()->_rdimensions[0];
+   int len =  U.Grid()->oSites();
+ 
++#if defined(GRID_CUDA) || defined(GRID_HIP)
++  if ( DhopInteriorFirst() ) {
++    int Opt = WilsonKernelsStatic::Opt;
++    std::vector<std::vector<CommsRequest_t> > requests;
++    // Interior first: non-blocking on the compute stream, needs no halo data
++    if (dag == DaggerYes) {
++      GRID_TRACE("DhopDagInterior");
++      Kernels::DhopDagKernel(Opt,st,U,st.CommBuf(),LLs,U.oSites(),in,out,1,0);
++    } else {
++      GRID_TRACE("DhopInterior");
++      Kernels::DhopKernel   (Opt,st,U,st.CommBuf(),LLs,U.oSites(),in,out,1,0);
++    }
++    // Gathers and comms on the side stream; their barriers then wait on it alone
++    auto mainStream = computeStream;
++    computeStream = DhopSideStream();
++    {
++      GRID_TRACE("Gather");
++      st.HaloExchangeOptGather(in,compressor);
++    }
++    st.CommunicateBegin(requests);
++    st.CommsMergeSHM(compressor);
++    st.CommunicateComplete(requests);
++    accelerator_barrier(); // side-stream kernels (sloppy decompression) done before the merge
++    computeStream = mainStream;
++    {
++      GRID_TRACE("Merge");
++      st.CommsMerge(compressor);
++    }
++    if (dag == DaggerYes) {
++      GRID_TRACE("DhopDagExterior");
++      Kernels::DhopDagKernel(Opt,st,U,st.CommBuf(),LLs,U.oSites(),in,out,0,1);
++    } else {
++      GRID_TRACE("DhopExterior");
++      Kernels::DhopKernel   (Opt,st,U,st.CommBuf(),LLs,U.oSites(),in,out,0,1);
++    }
++    return;
++  }
++#endif
++
+   /////////////////////////////
+   // Start comms  // Gather intranode and extra node differentiated??
+   /////////////////////////////
+-- 
+2.54.0 (Apple Git-157)
+

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -A m1516_g
+#SBATCH -A m1489_g
 #SBATCH -C gpu
 #SBATCH -q debug
 #SBATCH -t 00:30:00
@@ -19,11 +19,13 @@
 #   sbatch --export=ALL,MODE=nsys dwf_1node.slurm   timeline, all ranks
 #   sbatch --export=ALL,MODE=ncu  dwf_1node.slurm   counters, rank 0, Dslash ranges
 #   optional: BINNAME=Benchmark_dwf_fp32  EXTRA="--dslash-unroll"  TAG=_unroll (run dir suffix)
+#   optional: BUILDDIR=build-rr64 (build-rr80); any env such as GRID_DHOP_INTERIOR_FIRST=1
+#   MODE=cells: every variant in CELLS below, twice each, back to back on one node
 # Everything is kept in $RUN; nothing is filtered here.
 set -u
 MODE=${MODE:-base}
 WORK=/pscratch/sd/m/madams/gridperf
-BUILD=/pscratch/sd/m/madams/Grid-dev/build
+BUILD=/pscratch/sd/m/madams/Grid-dev/${BUILDDIR:-build}
 BIN=$BUILD/benchmarks/${BINNAME:-Benchmark_dwf}
 RUN=$WORK/runs/dwf_${MODE}${TAG:-}_${SLURM_JOB_ID}
 mkdir -p $RUN && cd $RUN
@@ -71,6 +73,15 @@ case $MODE in
     srun ./select_gpu nsys profile -t cuda,nvtx -o nsys.rank%q{SLURM_PROCID} \
          $BIN $ARGS > dwf.log 2>&1
     nsys stats -r nvtx_sum,cuda_gpu_kern_sum --format csv -o nsys0 nsys.rank0.nsys-rep > nsys_stats.log 2>&1 ;;
+  cells)
+    CELLS="base:build: ifirst:build:GRID_DHOP_INTERIOR_FIRST=1 rr64:build-rr64: rr80:build-rr80: rr64_ifirst:build-rr64:GRID_DHOP_INTERIOR_FIRST=1 unroll_ifirst:build:GRID_DHOP_INTERIOR_FIRST=1:--dslash-unroll"
+    for rep in 1 2; do
+      for cell in $CELLS; do
+        IFS=: read name bdir envs xargs <<< "$cell"
+        echo "cell $name rep $rep build $bdir env '$envs' args '$xargs'" >> env.txt
+        env $envs srun ./select_gpu /pscratch/sd/m/madams/Grid-dev/$bdir/benchmarks/${BINNAME:-Benchmark_dwf} $ARGS $xargs > cell_${name}_r${rep}.log 2>&1
+      done
+    done ;;
   ncu)
     srun --ntasks-per-node=1 dcgmi profile --pause
     srun ./select_gpu ./ncu_rank0 $BIN $ARGS > dwf.log 2>&1
