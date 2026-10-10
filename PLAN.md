@@ -20,6 +20,7 @@ repo as GPU performance analysis on Frontier, not precision tuning: see
 | B | Core tool: searches and evaluators | this file | nothing |
 | D | PETSc case study at scale | `casestudies/e2e/README.md` | node-hours on existing NERSC projects |
 | E | Parsimony–PETSc integration, ending in an upstream MR | `casestudies/petsc/PLAN.md` | B2; MatScalar Stage B for its stage 3 |
+| F | KINTORA Eulerian multigrid: second native case study and second paper (`casestudies/kintora/paper/`); extracts the native layer (B2) | `casestudies/kintora/PLAN.md` | KINTORA session 8 for its hooks; Mark's m1489_g node |
 
 ## B. Core tool
 
@@ -80,7 +81,7 @@ projects (m1516_g, m4267_g).
 
 | When | Work |
 |---|---|
-| Oct–Dec 2026 | A: arXiv. B1, B2. E stage 0 (petsc4py on a laptop). |
+| Oct–Dec 2026 | A: arXiv. B1, B2. E stage 0 (petsc4py on a laptop). F stages 0–C (B2 lands as F's P2/P3). |
 | Q1 2027 | E stage 1 (A100). B3. |
 | Q2 2027 | D: weak scaling 1–64 nodes. Fable break for the PETSc API. |
 | Q3 2027 | E stages 2–3 (in-library rounding; real fp32 via MatScalar). B4. Second paper: PETSc at scale. |
