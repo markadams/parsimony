@@ -69,7 +69,7 @@ against a synthetic oracle, independent of any floating-point emulation — see
 
 ## Formats
 
-IEEE fp64/fp32/fp16, plus bf16, tf32 and both fp8 encodings (e4m3, e5m2), plus
+IEEE fp64/fp32/fp16, plus bf16, tf32 and both OCP fp8 encodings (E4M3FN, E5M2), plus
 *virtual* widths — a float64 truncated to k significand bits, which is how you ask
 "how many bits does this value need?" without committing to a storage format:
 

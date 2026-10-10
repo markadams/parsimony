@@ -70,3 +70,63 @@ def test_nan_and_inf_pass_through():
 def test_scalars_stay_scalars():
     assert isinstance(round_to(0.1, FP32), float)
     assert isinstance(round_to(np.arange(3.0), FP32), np.ndarray)
+
+
+# ---- fp8: the OCP 8-bit formats as hardware implements them ---------------
+
+
+def _ocp_e4m3fn_values() -> np.ndarray:
+    """Every finite E4M3FN value, decoded byte by byte from the OCP spec.
+
+    Bias 7; exponent field 0 is subnormal (m/8 * 2**-6); every other exponent
+    field is normal, including 1111, whose all-ones significand alone is NaN.
+    Independent of `Format`, so it checks the definition, not the code.
+    """
+    return np.array(sorted(_ocp_e4m3fn_codes()))
+
+
+def _ocp_e4m3fn_codes() -> dict[float, int]:
+    """Finite E4M3FN value -> its significand field (the tie-break reads its last bit)."""
+    codes: dict[float, int] = {}
+    for byte in range(256):
+        sign = -1.0 if byte & 0x80 else 1.0
+        e, m = (byte >> 3) & 0xF, byte & 0x7
+        if e == 0xF and m == 0x7:
+            continue  # NaN
+        mag = (m / 8.0) * 2.0**-6 if e == 0 else (1 + m / 8.0) * 2.0 ** (e - 7)
+        codes.setdefault(sign * mag, m)  # +0 and -0 compare equal; both have m = 0
+    return codes
+
+
+def test_e4m3_is_ocp_e4m3fn():
+    vals = _ocp_e4m3fn_values()
+    assert FP8_E4M3.max_finite == 448.0 == vals.max()
+    assert FP8_E4M3.emin == -6 and FP8_E4M3.emax == 8
+    # Every representable value survives rounding unchanged.
+    assert np.array_equal(round_to(vals, FP8_E4M3), vals)
+
+
+def test_e4m3_rounds_to_nearest_even_like_a_brute_force_search():
+    vals, codes = _ocp_e4m3fn_values(), _ocp_e4m3fn_codes()
+    rng = np.random.default_rng(448)
+    x = np.concatenate([rng.uniform(-460, 460, 3000),
+                        rng.normal(scale=2.0**-7, size=1000),
+                        (vals[1:] + vals[:-1]) / 2])  # every tie
+    got = round_to(x, FP8_E4M3)
+    for xi, gi in zip(x, got):
+        d = np.abs(vals - xi)
+        near = vals[d == d.min()]
+        if near.size == 2:  # a tie: the even significand (last mantissa bit 0) wins
+            even = [v for v in near if codes[float(v)] % 2 == 0]
+            assert len(even) == 1 and gi == even[0], (xi, gi, near)
+        else:
+            assert gi == near[0], (xi, gi, near)
+
+
+def test_e4m3_overflow_is_nan_and_has_no_infinity():
+    assert round_to(460.0, FP8_E4M3) == 448.0   # below the 464 midpoint
+    assert round_to(464.0, FP8_E4M3) == 448.0   # the tie goes to the even 448
+    assert np.isnan(round_to(470.0, FP8_E4M3))  # would round to 480: no such value
+    assert np.isnan(round_to(-1e6, FP8_E4M3))
+    assert np.isnan(round_to(np.inf, FP8_E4M3))
+    assert round_to(2.0**-9, FP8_E4M3) == 2.0**-9  # smallest subnormal

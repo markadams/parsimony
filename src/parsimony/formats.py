@@ -30,11 +30,18 @@ class Format:
     `mant_bits` is the number of *explicit* significand bits, following IEEE
     754 naming: float32 is (8, 23) and carries 24 bits of precision once the
     implicit leading bit is counted.
+
+    `finite_only` is the OCP "FN" encoding (fp8 E4M3 as hardware implements it):
+    no infinities, the all-ones exponent holds normal numbers, and only its
+    all-ones significand is NaN.  That raises emax by one and drops the top
+    significand, so E4M3FN reaches 448 where an IEEE-style e4m3 would stop at
+    240.  Overflow produces NaN (the non-saturating conversion).
     """
 
     name: str
     exp_bits: int
     mant_bits: int
+    finite_only: bool = False
 
     @property
     def precision(self) -> int:
@@ -42,16 +49,21 @@ class Format:
         return self.mant_bits + 1
 
     @property
-    def emax(self) -> int:
+    def bias(self) -> int:
         return 2 ** (self.exp_bits - 1) - 1
 
     @property
+    def emax(self) -> int:
+        return self.bias + (1 if self.finite_only else 0)
+
+    @property
     def emin(self) -> int:
-        return 1 - self.emax
+        return 1 - self.bias
 
     @property
     def max_finite(self) -> float:
-        return float((2.0 - 2.0 ** -self.mant_bits) * 2.0**self.emax)
+        top = 2.0 - 2.0 ** (1 - self.mant_bits if self.finite_only else -self.mant_bits)
+        return float(top * 2.0**self.emax)
 
     def __str__(self) -> str:  # pragma: no cover - display only
         return self.name
@@ -62,7 +74,7 @@ FP32 = Format("fp32", 8, 23)
 TF32 = Format("tf32", 8, 10)
 FP16 = Format("fp16", 5, 10)
 BF16 = Format("bf16", 8, 7)
-FP8_E4M3 = Format("fp8e4m3", 4, 3)
+FP8_E4M3 = Format("fp8e4m3", 4, 3, finite_only=True)  # OCP E4M3FN: max 448, no inf
 FP8_E5M2 = Format("fp8e5m2", 5, 2)
 
 #: Descending precision.  Search strategies walk this from left to right.
@@ -87,8 +99,9 @@ def rank(fmt: Format) -> tuple[int, int]:
 def round_to(x, fmt: Format):
     """Round `x` to the nearest value representable in `fmt` (ties to even-ish).
 
-    Handles overflow to infinity and gradual underflow into the subnormal range.
-    Accepts scalars or arrays; returns the same shape.
+    Handles overflow (to infinity, or to NaN for a `finite_only` format) and
+    gradual underflow into the subnormal range.  Accepts scalars or arrays;
+    returns the same shape.
     """
     if fmt.precision >= 53 and fmt.exp_bits >= 11:
         return x
@@ -111,8 +124,10 @@ def round_to(x, fmt: Format):
         quantum = np.exp2(float(fmt.emin - fmt.mant_bits))
         y = np.where(below, np.round(a / quantum) * quantum, y)
 
-    y = np.where(np.abs(y) > fmt.max_finite, np.copysign(np.inf, a), y)
+    over = np.nan if fmt.finite_only else np.copysign(np.inf, a)
+    y = np.where(np.abs(y) > fmt.max_finite, over, y)
     y = np.where(a == 0.0, a, y)
-    y = np.where(np.isfinite(a), y, a)  # preserve incoming inf/nan
+    # Incoming inf/nan are kept, except that a format without infinities has only NaN.
+    y = np.where(np.isfinite(a), y, np.where(np.isnan(a), a, over))
 
     return float(y) if scalar else y

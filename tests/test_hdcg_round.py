@@ -49,6 +49,8 @@ def sample() -> np.ndarray:
         np.ldexp(np.arange(1, 64, dtype=np.float64) * 2 + 1, -4),
         # Exponent extremes: fp16/bf16 overflow and underflow live here.
         np.array([0.0, -0.0, 1e300, -1e300, 1e38, 6.5e4, 1e-40, 5e-8, 2.0 ** -1050]),
+        # fp8 E4M3FN's top binade and its overflow (448 is the largest finite; 464 ties to it).
+        np.array([240.0, 241.0, 300.0, 448.0, -460.0, 464.0, 470.0, np.inf, -np.inf]),
     ])
     return x
 

@@ -1,5 +1,8 @@
 #ifndef PARSIMONY_ROUND_BITS_H
 #define PARSIMONY_ROUND_BITS_H
+/* Bumped whenever a rounding rule changes; a vendored copy (KINTORA) states the version it took.
+ * 2 (2026-10-10): fp8e4m3 is OCP E4M3FN (max 448, no inf, overflow to NaN). */
+#define PARSIMONY_ROUND_BITS_VERSION 2
 /* Storage rounding of a double to a virtual or named floating-point format.
  *
  * This is the C++ twin of parsimony's `formats.round_to`, and it must agree
@@ -34,18 +37,20 @@ namespace Parsimony {
 struct RoundSpec {
   int precision;  /* significand bits including the implicit leading bit */
   int exp_bits;
+  int finite_only; /* OCP "FN" (fp8 E4M3): no inf, emax one higher, overflow is NaN */
 
   PARSIMONY_HD int mant_bits() const { return precision - 1; }
-  PARSIMONY_HD int emax() const { return (1 << (exp_bits - 1)) - 1; }
-  PARSIMONY_HD int emin() const { return 1 - emax(); }
-  PARSIMONY_HD double max_finite() const {
-    return (2.0 - ldexp(1.0, -mant_bits())) * ldexp(1.0, emax());
+  PARSIMONY_HD int bias() const { return (1 << (exp_bits - 1)) - 1; }
+  PARSIMONY_HD int emax() const { return bias() + (finite_only ? 1 : 0); }
+  PARSIMONY_HD int emin() const { return 1 - bias(); }
+  PARSIMONY_HD double max_finite() const { /* FN: the top binade's all-ones significand is NaN */
+    return (2.0 - ldexp(1.0, finite_only ? 1 - mant_bits() : -mant_bits())) * ldexp(1.0, emax());
   }
   /* float64 and anything wider is a no-op: this is the "rounding off" rung. */
   PARSIMONY_HD bool identity() const { return precision >= 53 && exp_bits >= 11; }
 };
 
-static const RoundSpec ROUND_OFF = {53, 11};
+static const RoundSpec ROUND_OFF = {53, 11, 0};
 
 /* Round to nearest representable value, ties to even.
  *
@@ -59,9 +64,9 @@ PARSIMONY_HD inline double round_bits(double a, const RoundSpec &s) {
   if (s.identity()) return a;
   if (a == 0.0) return a;
 #ifdef __CUDA_ARCH__
-  if (!isfinite(a)) return a;
+  if (!isfinite(a)) return (s.finite_only && !isnan(a)) ? NAN : a;
 #else
-  if (!std::isfinite(a)) return a;
+  if (!std::isfinite(a)) return (s.finite_only && !std::isnan(a)) ? NAN : a;
 #endif
 
   int e;
@@ -82,7 +87,7 @@ PARSIMONY_HD inline double round_bits(double a, const RoundSpec &s) {
     y = ldexp(nearbyint(m * scale) / scale, e);
   }
 
-  if (fabs(y) > s.max_finite()) y = copysign(INFINITY, a);
+  if (fabs(y) > s.max_finite()) y = s.finite_only ? NAN : copysign(INFINITY, a);
   return y;
 }
 
@@ -93,16 +98,17 @@ PARSIMONY_HD inline double round_bits(double a, const RoundSpec &s) {
 inline bool parse_round_spec(const char *text, RoundSpec &out) {
   if (text == 0 || text[0] == '\0') return false;
 
-  struct Named { const char *name; int precision; int exp_bits; };
+  struct Named { const char *name; int precision; int exp_bits; int finite_only; };
   static const Named table[] = {
-      {"fp64", 53, 11}, {"fp32", 24, 8},  {"tf32", 11, 8},
-      {"bf16", 8, 8},   {"fp16", 11, 5},  {"fp8e5m2", 3, 5},
-      {"fp8e4m3", 4, 4},
+      {"fp64", 53, 11, 0}, {"fp32", 24, 8, 0},  {"tf32", 11, 8, 0},
+      {"bf16", 8, 8, 0},   {"fp16", 11, 5, 0},  {"fp8e5m2", 3, 5, 0},
+      {"fp8e4m3", 4, 4, 1}, /* OCP E4M3FN, as hardware implements it: max 448 */
   };
   for (unsigned i = 0; i < sizeof(table) / sizeof(table[0]); i++) {
     if (std::strcmp(text, table[i].name) == 0) {
       out.precision = table[i].precision;
       out.exp_bits = table[i].exp_bits;
+      out.finite_only = table[i].finite_only;
       return true;
     }
   }
@@ -113,6 +119,7 @@ inline bool parse_round_spec(const char *text, RoundSpec &out) {
     if (end == text + 1 || *end != '\0' || bits < 1 || bits > 53) return false;
     out.precision = (int)bits;
     out.exp_bits = 11;
+    out.finite_only = 0;
     return true;
   }
 
@@ -124,6 +131,7 @@ inline bool parse_round_spec(const char *text, RoundSpec &out) {
     if (end != text && *end == '\0' && bits >= 1 && bits <= 53) {
       out.precision = (int)bits;
       out.exp_bits = 11;
+      out.finite_only = 0;
       return true;
     }
   }
