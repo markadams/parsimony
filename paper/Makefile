@@ -1,13 +1,15 @@
-PAPER = parsimony
+# parsimony.tex: the method paper.  kintora-precision.tex: the KINTORA case-study paper.
+# Both share refs.bib.
+PAPERS = parsimony kintora-precision
 
-.PHONY: all clean watch
-all: $(PAPER).pdf
+.PHONY: all clean
+all: $(PAPERS:%=%.pdf)
 
-$(PAPER).pdf: $(PAPER).tex refs.bib
-	pdflatex -interaction=nonstopmode -halt-on-error $(PAPER)
-	-bibtex $(PAPER)
-	pdflatex -interaction=nonstopmode -halt-on-error $(PAPER)
-	pdflatex -interaction=nonstopmode -halt-on-error $(PAPER)
+%.pdf: %.tex refs.bib
+	pdflatex -interaction=nonstopmode -halt-on-error $*
+	-bibtex $*
+	pdflatex -interaction=nonstopmode -halt-on-error $*
+	pdflatex -interaction=nonstopmode -halt-on-error $*
 
 clean:
-	rm -f $(PAPER).{aux,bbl,blg,log,out,pdf,toc}
+	rm -f $(foreach p,$(PAPERS),$(p).aux $(p).bbl $(p).blg $(p).log $(p).out $(p).pdf $(p).toc)
