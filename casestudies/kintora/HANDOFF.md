@@ -5,9 +5,9 @@ Written 2026-10-10 (Opus 5.5), end of the session that started the study.  Read 
 ## State
 
 - **Parsimony** (`~/Codes/parsimony`, main): this session's work is committed in three commits on top of cc3e76c
-  (`git log --oneline -4`): the fp8 E4M3 fix (library + `round_bits.h` + tests), the case-study documents and the
-  development plan's workstream F, and the paper.  107 tests pass.  Whether to push is Mark's call: a push also
-  publishes the 8 earlier local commits (Grid/HDCG, held back since 2026-10-06).
+  (235a344 the fp8 E4M3 fix, 2608461 the case-study documents and workstream F, d294d1c the paper).  107 tests
+  pass.  **Pushed** to origin 2026-10-10 at Mark's choice, together with the 8 Grid/HDCG commits held since
+  2026-10-06; origin/main = local main.
 - **KINTORA** (`~/Codes/plasma-kinetics`): untouched by this session; HEAD 7f8c9d9 at the start.  Session 8 is active
   there (sweep parallelism, PBSetUp24 rewrite, arc-length rule).
 - **Nothing is built** for the study on either side.  No hook, no evaluator, no result.
@@ -31,7 +31,7 @@ Stage B.
 ## Next, in order
 
 1. **Mark**: relay the K1-K6 message to KINTORA session 8 (text in this session's transcript; the entries are in
-   `FINDINGS-FOR-KINTORA.md`); mark them "sent".  Decide the push.
+   `FINDINGS-FOR-KINTORA.md`); mark them "sent".
 2. **Fable session** (can run now, Mac): `FABLE-BRIEF.md`.
 3. **Stage 0** (Opus, Mac, Parsimony only; can run in parallel with 2): P1 (`parsimony.native`, `round_bits.h`
    moved out of `casestudies/hdcg/` with a `get_include()`), P2 (native evaluator base extracted from
