@@ -11,7 +11,7 @@ Parsimony never edits KINTORA's tree or ledger; a KINTORA session does.
   2-4 its a count changes only when the preconditioner degrades by 25-50%.
 - **Action.** `-eul_mg_cycles 20` contraction factor, `-eul_mg_sweep_fp32 1` vs `0`, at L4 v48 mu rows 18/23,
   dt .2/.4, and at L6; record the factors in the ledger either way.
-- **Status.** Drafted 2026-10-10; in the message given to Mark to relay to session 8.
+- **Status.** Sent 2026-10-10 (Mark relayed it to KINTORA session 8).
 
 ## K2 (2026-10-10) -- `d_pbinv` is resident set-up scratch on the default path
 
@@ -23,14 +23,14 @@ Parsimony never edits KINTORA's tree or ledger; a KINTORA session does.
   1.21 GB at L6.
 - **Action.** Assemble the node blocks in team scratch in the PBSetUp24 rewrite (session 8 item 2), or free the
   array after set-up on this path.
-- **Status.** Drafted 2026-10-10; in the same message.
+- **Status.** Sent 2026-10-10.
 
 ## K3 (2026-10-10) -- `d_Minv` on every level, read on the finest only
 
 - **Evidence.** `KinEulOpDevSetUp` allocates it per level; `KinEulOpDevMassPtr` (its reader) is called on the finest
   level's operator (`EulMGJMult`, `kin_eulstep.cxx`).  The coarse copies: 6 values per unknown, ~0.30 GB at L6.
 - **Action.** Allocate on the finest level only, after checking no coarse-level path calls the inverse mass.
-- **Status.** Drafted 2026-10-10 (minor); in the same message.
+- **Status.** Sent 2026-10-10 (minor).
 
 ## K4 (2026-10-10) -- after fp32 inverses, the couplings C are the largest fp64 array
 
@@ -38,7 +38,7 @@ Parsimony never edits KINTORA's tree or ledger; a KINTORA session does.
   the fp32 inverses.  If the sweep becomes bandwidth-bound (session 8 item 1), C is half its stored bytes.
 - **Action.** Load C through a template parameter as the sweep's `DT` loads D^-1, so its storage type can change
   without a rewrite.  No format chosen yet; the study measures it.
-- **Status.** Drafted 2026-10-10; in the same message.
+- **Status.** Sent 2026-10-10.
 
 ## K5 (2026-10-10) -- the D^-1 hook site is the PBSetUp24 store
 
@@ -46,7 +46,7 @@ Parsimony never edits KINTORA's tree or ledger; a KINTORA session does.
   kernel, which session 8 item 2 rewrites.
 - **Action.** Keep that store a single assignment-from-double per entry; if the rewrite is pivot-free, record whether
   the 24 x 24 blocks are diagonally dominant (the study wants their condition numbers).
-- **Status.** Drafted 2026-10-10; in the same message.
+- **Status.** Sent 2026-10-10.
 
 ## K6 (2026-10-10) -- the Eulerian paper's Sec. 2 describes the superseded design
 
@@ -54,4 +54,4 @@ Parsimony never edits KINTORA's tree or ledger; a KINTORA session does.
   LU, 6 segments, a 130 GB TODO); D222(c) found it cannot converge, and the code runs the multigrid on the P2 x P3
   operator with the 24 x 24 sweep.
 - **Action.** Rewrite Sec. 2 when that paper is next touched.
-- **Status.** Drafted 2026-10-10 (low priority); in the same message.
+- **Status.** Sent 2026-10-10 (low priority).

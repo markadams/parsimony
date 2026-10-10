@@ -18,7 +18,7 @@ Written 2026-10-10 (Opus 5.5), end of the session that started the study.  Read 
 |---|---|
 | `PLAN.md` | the plan: stored-data inventory, the rounding rule, observables, cases, stages 0 and A-E, library track P0-P9, paper track, the two-way interaction with KINTORA, decisions of 2026-10-10 |
 | `DRIVER-CONTRACT.md` | the interface the KINTORA hooks implement: `-eul_round_<var>`, the result document (`parsimony-driver/1`), the co-process line protocol, five gates |
-| `FINDINGS-FOR-KINTORA.md` | K1-K6, all "drafted", in a message Mark has to relay to KINTORA session 8 |
+| `FINDINGS-FOR-KINTORA.md` | K1-K6, sent to KINTORA session 8 on 2026-10-10; outcomes not yet recorded |
 | `FABLE-BRIEF.md` | the Fable session: predict each quantity's knee before Stage B measures it |
 | `../../paper/kintora-precision.tex` | the paper (16 pp with `\planningtrue`, 13 without); `make` in `paper/` builds both papers |
 
@@ -30,8 +30,8 @@ Stage B.
 
 ## Next, in order
 
-1. **Mark**: relay the K1-K6 message to KINTORA session 8 (text in this session's transcript; the entries are in
-   `FINDINGS-FOR-KINTORA.md`); mark them "sent".
+1. K1-K6 were sent to KINTORA session 8 (Mark, 2026-10-10).  When a KINTORA session adopts or rejects one, record
+   the ledger entry or commit in `FINDINGS-FOR-KINTORA.md`.
 2. **Fable session** (can run now, Mac): `FABLE-BRIEF.md`.
 3. **Stage 0** (Opus, Mac, Parsimony only; can run in parallel with 2): P1 (`parsimony.native`, `round_bits.h`
    moved out of `casestudies/hdcg/` with a `get_include()`), P2 (native evaluator base extracted from
